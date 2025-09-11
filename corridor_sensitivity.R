@@ -1,4 +1,7 @@
-# Generating figures for OD vs CRD
+# Corridor sensitivity, Generating figures for OD vs CRD
+
+## TODO:
+### MANUALLY SET THE RESOLUTIONS SO IT DOESN'T AUTOMATICALLY SELECT THE SMALLEST DISTANCE BETWEEN NEARBY POINT
 
 # Load `ctmm` package
 library(ctmm)
@@ -97,9 +100,12 @@ projection(DATA) <- median(DATA)  # re-center projection
 
 # Plot cleaned data
 par(mfrow = c(1,1))
+png(file = "figures/mule_deer/mule_deer_paths_only2.png", width = 5, height = 4.5, units = "in", res = 600)
 plot(DATA, col = color(DATA, by = "individual"), 
-     main = "Migration Paths without Range Residency")  # no more range residency
-compass(loc = c(35000, -15000), cex = 1.7) 
+     main = "Migration Paths without Range Residency",  # no more range residency
+     xlim = c(-22000,32000), ylim = c(-20000,20000))
+compass(loc = c(30000, -16000), cex = 1.7)
+dev.off()
 
 
 # Sampling frequency/interval ----
@@ -167,6 +173,12 @@ for (m in 2:6) {
 # save(OCC, file = "data/mule_deer/occurrence_sensitivity.rda")
 load(file = "data/mule_deer/occurrence_sensitivity.rda")
 
+# 2-hour sampling
+png(file = "figures/mule_deer/occurrence_2h.png", width = 5, height = 4.5, units = "in", res = 600)
+plot(OCC[[1]], main = "Occurrence Distribution",
+     xlim = c(-22000,32000), ylim = c(-20000,20000))
+dev.off()
+
 # Combined figure
 # png(file = "figures/mule_deer/occurrence_comb_2x2.png", width = 6.5, height = 5.1, units = "in", res = 600)
 # par(mfrow = c(2,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25),
@@ -207,6 +219,12 @@ for (m in 2:6) {
 # save(COR, file = "data/mule_deer/corridor_sensitivity.rda")
 load(file = "data/mule_deer/corridor_sensitivity.rda")
 
+# 2-hour sampling
+png(file = "figures/mule_deer/corridor_2h.png", width = 5, height = 4.5, units = "in", res = 600)
+plot(COR[[1]], main = "Corridor Distribution",
+     xlim = c(-22000,32000), ylim = c(-20000,20000))
+dev.off()
+
 # Combined figure
 # png(file = "figures/mule_deer/corridor_comb_2x2.png", width = 6.5, height = 5.1, units = "in", res = 600)
 par(mfrow = c(2,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25),
@@ -228,16 +246,16 @@ plot(COR[[6]], main = "64-Hour")
 png(file = "figures/mule_deer/sensitivity_comparison_interval.png", width = 4800, height = 6000, units = "px", res = 600)
 par(mfrow = c(3,2), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0.25,0.25), cex.main = 1.2)
 # Plot distributions
-plot(OCC[[1]], main = "2-Hour")
+plot(OCC[[1]], main = "2-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
 # title("Occurrence Distribution")
 mtext(substitute(paste(bold("Occurrence Distribution"))), line = 3, side = 3)
-plot(COR[[1]], main = "2-Hour")
+plot(COR[[1]], main = "2-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
 # title("Corridor Distribution")
 mtext(substitute(paste(bold("Corridor Distribution"))), line = 3, side = 3)
-plot(OCC[[4]], main = "16-Hour")
-plot(COR[[4]], main = "16-Hour")
-plot(OCC[[6]], main = "64-Hour")
-plot(COR[[6]], main = "64-Hour")
+plot(OCC[[3]], main = "8-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
+plot(COR[[3]], main = "8-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
+plot(OCC[[5]], main = "32-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
+plot(COR[[5]], main = "32-Hour", xlim = c(-22000,32000), ylim = c(-20000,20000))
 dev.off()
 
 
@@ -458,7 +476,7 @@ for (m in 2:6) {
   COR[[m]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2)
 }
 
-# save(COR, file = "data/mule_deer/corridor_sensitivity_paths.rda")
+save(COR, file = "data/mule_deer/corridor_sensitivity_paths.rda")
 load(file = "data/mule_deer/corridor_sensitivity_paths.rda")
 
 # Combined figure
@@ -588,7 +606,8 @@ plot(data, col = color(data, by = "time"), cex = 0.5, error = FALSE, pch = 16)
 dt.plot(data)  # mostly 1-hr sampling
 
 # Delineate separate paths based on time index
-plot(x = data$x, y = data$t) +
+plot(x = data$x, y = data$t, col = color(data, by = "time"), 
+     xlab = "X (m)", ylab = "Time (s)") +
   abline(h = 1.459e9, lty = 2) +
   abline(h = 1.458e9, lty = 2) +
   abline(h = 1.455e9, lty = 2)
@@ -599,6 +618,9 @@ DATA[[1]] <- data[data$t <= 1.455e9,]
 DATA[[2]] <- data[data$t > 1.455e9 & data$t <= 1.458e9,]
 DATA[[3]] <- data[data$t > 1.458e9 & data$t <= 1.459e9,]
 DATA[[4]] <- data[data$t > 1.459e9,]
+
+summary(DATA)  # 1-hr sampling over several (10-26) days each
+projection(DATA) <- median(DATA)
 
 # # cutoff <- c()
 # for(i in 2:nrow(data)) {
@@ -644,9 +666,6 @@ DATA[[4]] <- data[data$t > 1.459e9,]
 # DATA[[7]] <- data[data$t>data$t[971] & data$t<=data$t[1061],]
 # DATA[[8]] <- data[data$t>data$t[1061],]
 
-summary(DATA)  # 1-hr sampling over several (10-26) days each
-projection(DATA) <- median(DATA)
-
 # Plot cleaned data
 png(file = "figures/jaguar/courisco_4paths.png", width = 6, height = 5, units = "in", res = 600)
 par(mfrow = c(1,1))
@@ -655,6 +674,12 @@ plot(DATA, col = color(DATA, by = "individual"),
      cex.main = 1.2)
 compass(loc = c(7000, -5000), cex = 1.7)
 dev.off()
+
+# Plot data w/out errors for to better see the points
+plot(DATA, col = color(DATA, by = "individual"), error = FALSE, pch = 16,
+     main = "Courisco tracks split into 4 paths",  # 4 effective individuals
+     cex.main = 1.2)
+compass(loc = c(7000, -5000), cex = 1.7)
 
 # # Split into 3 paths (effectively 3 separate individuals)
 # (max(jag1$t)-min(jag1$t))/3  # even 3-way split of location points
@@ -856,7 +881,7 @@ dev.off()
 
 # Model estimate and selection (same as above)
 # save(FIT, file = "data/jaguar/fit_courisco.rda")  # single longest step
-load(file = "data/jaguar/fit_courisco.rda")
+load(file = "data/jaguar/fit_courisco_4paths.rda")
 
 # Inspect model selection results for each individual
 summary(FITS[[1]])
@@ -996,6 +1021,144 @@ plot(COR[[4]], main = "1/16", xlim = c(-43000,28000), ylim = c(-20000,20000))
 plot(OCC[[8]], main = "1/256", xlim = c(-43000,28000), ylim = c(-20000,20000))
 plot(COR[[8]], main = "1/256", xlim = c(-43000,28000), ylim = c(-20000,20000))
 dev.off()
+
+
+## FIXME:
+# Passage count ----
+
+## Model Fitting ----
+
+# Model estimate and selection (same as above)
+load(file = "data/jaguar/fit_courisco_4paths.rda")
+
+# Inspect model selection results for each individual
+summary(FITS[[1]])
+summary(FITS[[2]])
+summary(FITS[[3]])
+summary(FITS[[4]])
+
+## Anisotropic Ornstein-Uhlenbeck foraging model selected for all individuals
+
+# Extract and store the best fit for each individual
+corfits <- list()
+for (i in 1:length(FITS)) {
+  corfits[[i]] <- FITS[[i]]$`OUF anisotropic`
+}
+
+### Occurrence Distribution ----
+
+# Duplicate data for manipulation (shortening)
+DATA3 <- DATA
+corfits2 <- corfits
+
+# Generate occurrence distributions
+OCC <- list()  # empty list
+OCC[[1]] <- occurrence(DATA3, corfits2)
+OCC[[1]] <- mean(OCC[[1]])  # average distributions
+
+# Generate occurrence distribution for each subset of data
+for (m in 2:4) {
+  
+  # Remove an individual path each loop
+  DATA3 <- DATA3[-1]
+  corfits2 <- corfits2[-1]
+  
+  # Occurrence distribution
+  OCC[[m]] <- occurrence(DATA3, corfits2)
+  # while (m != 7) {
+  OCC[[m]] <- mean(OCC[[m]]) #}
+}
+
+save(OCC, file = "data/jaguar/occurrence_sensitivity_paths.rda")
+load(file = "data/jaguar/occurrence_sensitivity_paths.rda")
+
+# Combined figure
+png(file = "figures/jaguar/occurrence_comb_paths.png", width = 6.5, height = 5.1, units = "in", res = 600)
+par(mfrow = c(2,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
+# png(file = "figures/jaguar/occurrence_comb_H_paths.png", width = 9, height = 5.55, units = "in", res = 600)
+# par(mfrow = c(2,3), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0,0.25), cex.main = 1.4)
+# Plot all distributions
+plot(OCC[[1]], main = "4 Passages", xlim = c(-24000,10000), ylim = c(-5000,7000))
+plot(OCC[[2]], main = "3 Passages", xlim = c(-24000,10000), ylim = c(-5000,7000))  #
+plot(OCC[[3]], main = "2 Passages", xlim = c(-24000,10000), ylim = c(-5000,7000))
+plot(OCC[[4]], main = "1 Passages", xlim = c(-24000,10000), ylim = c(-5000,7000))
+# plot(OCC[[5]], main = "3 Passages", xlim = c(-25000,35000), ylim = c(-20000,20000))  #
+# plot(OCC[[6]], main = "2 Passages", xlim = c(-25000,35000), ylim = c(-20000,20000))
+# plot(OCC[[7]], main = "1 Passage", xlim = c(-25000,35000), ylim = c(-20000,20000))
+dev.off()
+
+
+### Corridor Distribution ----
+
+# Duplicate data for manipulation (coarsening)
+DATA3 <- DATA
+corfits2 <- corfits
+
+# # Generate corridor range distribution
+# COR <- list()  # empty list
+# COR[[1]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2)
+# 
+# # Generate range distribution for each subset of data
+# for (m in 2:3) {
+#   
+#   # Remove an individual path each loop
+#   DATA3 <- DATA3[-1]
+#   corfits2 <- corfits2[-1]
+#   
+#   # Corridor range distribution
+#   COR[[m]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2)
+# }
+
+# Generate corridor range distribution
+COR <- list()  # empty list
+COR[[1]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2, res.space = 5)
+
+# Generate range distribution for each subset of data
+
+# Remove an individual path each loop
+DATA3 <- DATA3[-1]
+corfits2 <- corfits2[-1]
+
+# Corridor range distribution
+COR[[2]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2, res.space = 5)
+
+# Remove an individual path each loop
+DATA3 <- DATA3[-1]
+corfits2 <- corfits2[-1]
+
+COR[[3]] <- ctmm:::corridor(data = DATA3, CTMM = corfits2, res.space = 1)
+
+save(COR, file = "data/jaguar/corridor_sensitivity_paths_res5.rda")
+load(file = "data/jaguar/corridor_sensitivity_paths_res5.rda")
+
+# Combined figure
+png(file = "figures/jaguar/corridor_comb_paths.png", width = 6.5, height = 5.1, units = "in", res = 600)
+par(mfrow = c(2,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
+# png(file = "figures/jaguar/corridor_comb_H_paths.png", width = 9, height = 5.55, units = "in", res = 600)
+# par(mfrow = c(2,3), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0,0.25), cex.main = 1.4)
+# Plot all distributions
+plot(COR[[1]], main = "4 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+plot(COR[[2]], main = "3 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+plot(COR[[3]], main = "2 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+dev.off()
+
+
+# Reorder plots to compare ODs and Corridor distributions
+# png(file = "figures/jaguar/sensitivity_comparison_paths.png", width = 4800, height = 6000, units = "px", res = 600)
+# par(mfrow = c(3,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
+png(file = "figures/jaguar/sensitivity_comparison_paths.png", width = 4800, height = 6000, units = "px", res = 600)
+par(mfrow = c(3,2), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0.25,0.25), cex.main = 1.2)
+# Plot distributions
+plot(OCC[[1]], main = "4 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+mtext(substitute(paste(bold("Occurrence Distribution"))), line = 3, side = 3)
+plot(COR[[1]], main = "4 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+mtext(substitute(paste(bold("Corridor Distribution"))), line = 3, side = 3)
+plot(OCC[[2]], main = "3 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+plot(COR[[2]], main = "3 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+plot(OCC[[3]], main = "2 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+plot(COR[[3]], main = "2 Passages", xlim = c(-25000,10000), ylim = c(-7000,9000))
+dev.off()
+
 
 
 
