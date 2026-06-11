@@ -221,8 +221,7 @@ dev.off()
 ## Rerun jaguar occurrence at higher temporal resolution ----
 
 # Import jaguar data
-jaguar <- read.csv("data/jaguar/Jaguar Conservation in the Caatinga Biome.csv")
-jaguar <- as.telemetry(jaguar)
+jaguar <- as.telemetry("data/jaguar/Jaguar Conservation in the Caatinga Biome.csv")
 
 # Subset data
 jag1 <- jaguar[[1]]  # ID: Courisco
@@ -289,7 +288,7 @@ pred_paths <- list()
 for (i in 1:length(DATA)) {
   pred_paths[[i]] <- predict(corfits[[i]], data = DATA[[i]], t = SEQ[[i]])
 }
-save(pred_paths, file = "data/jaguar/jaguar_pred_paths.rda")
+# save(pred_paths, file = "data/jaguar/jaguar_pred_paths.rda")
 load(file = "data/jaguar/jaguar_pred_paths.rda")
 
 # Simulate from movement model, conditional on data
@@ -347,7 +346,7 @@ png(file = "figures/jaguar/jaguar_zoom_pred_MLP2.png", width = 6.86, height = 4,
 plot(pred_paths, col = color(pred_paths, by = "individual"), error = FALSE, type = "l",
      xlim = c(-7500,-6000), ylim = c(-2700,-1200))
 # plot(pred_paths, error = FALSE, type = "l", col = color(pred_paths, by = "individual"), add = TRUE)
-# plot(pred_paths[[i]], error = FALSE, col = "black", add = TRUE)
+# plot(pred_paths, error = FALSE, col = "black", add = TRUE)
 # plot(DATA, col = "black", add = TRUE)
 dev.off()
 
@@ -357,6 +356,158 @@ plot(sim_paths, col = color(sim_paths, by = "individual"),
 
 plot(DATA, col = color(DATA, by = "individual"),
      xlim = c(-7500,-6000), ylim = c(-2700,-1200))
+
+# Pull out single predicted points and error circles
+NN11 <- pred_paths[[2]][6020,] 
+test <- NN11
+test[6:10] <- test[6:10]*10000
+plot(pred_paths, col = color(pred_paths, by = "individual"), error = FALSE, type = "l",
+     xlim = c(-7500,-6000), ylim = c(-2700,-1200))
+plot(NN11, col = "red", add = TRUE)
+plot(NN11, col = "red", error = FALSE, pch = 16, add = TRUE)
+
+plot(test, col = "black", add = TRUE)
+
+
+# Nearest Neighbors ----
+
+# debug <- FALSE
+axes <- corfits[[1]]$axes
+info <- ctmm:::mean_info(DATA)
+window <- 1 %#% 'day' # minimum window for greedy search
+n <- length(DATA)
+W <- list()
+dt <- array(0,n)
+DATA2 <- list
+for(i in 1:n)
+{
+  t <- seq(DATA[[i]]$t[1],ctmm:::last(DATA[[i]]$t),length.out=2)
+  dt[i] <- stats::median(diff(t))
+  # use instantaneous speeds as weights for effective distance sampling
+  W[[i]] <- speeds(DATA[[i]],corfits[[i]],t=t)[,'est']
+  # total weight == total distance
+  W[[i]] <- W[[i]]*dt[i]
+  # W[[i]] <- rep(1,res.time)
+  # regularize data
+  DATA2[[i]] <- predict(DATA[[i]],corfits[[i]],t=t)
+}
+
+# convert from time to index
+window <- ceiling(window/dt)
+
+res.time = 2
+END <- 1:res.time
+DNE <- res.time:1
+
+## orient all tracks in the same direction for NN search
+# forward variance minus reverse variance
+VFB <- array(0,c(n,n))
+for(i in 1:n)
+{
+  for(j in ctmm:::`%:%`((i+1),n))
+  { VFB[i,j] <- VFB[j,i] <- sum((DATA[[i]][END,axes]-DATA[[j]][END,axes])^2) - sum((DATA[[i]][END,axes]-DATA[[j]][DNE,axes])^2) }
+}
+# positive VFB is bad
+
+I <- apply(abs(VFB),1,sum) # importance
+I <- sort(I,index.return=TRUE)$ix # least to most importance
+for(i in I)
+{
+  # check if we need to reverse order
+  MAX <- +max(VFB[i,]) # worst
+  MIN <- -min(VFB[i,]) # best
+  if(MAX>MIN) # worst is worse than best
+  {
+    DATA[[i]] <- DATA[[i]][res.time:1,]
+    VFB[i,] <- VFB[,i] <- -VFB[i,]
+  }
+}
+
+NN <- array(1,c(res.time,n,n)) # nearest neighbor
+DIST <- array(0,c(res.time,n,n)) # NN pairwise distances^2
+
+# greedy search algorithm
+search <- function(t,i,j,WIN=NULL)
+{
+  if(i==j)
+  {
+    NN[t,i,j] <<- t
+    DIST[t,i,j] <<- 0
+    return()
+  }
+  
+  if(is.null(WIN))
+  {
+    # initial search point
+    s <- NN[t,i,j]
+    # one-day window
+    WIN <- max(s-window[j],1):min(s+window[j],res.time)
+  }
+  # all distances^2 in window
+  D <- (DATA[[i]]$x[t]-DATA[[j]]$x[WIN])^2 + (DATA[[i]]$y[t]-DATA[[j]]$y[WIN])^2
+  
+  # closest point
+  s <- which.min(D)
+  FIRST <- s==1
+  LAST <- s==length(WIN)
+  
+  D <- D[s]
+  s <- WIN[s]
+  
+  NN[t,i,j] <<- s
+  DIST[t,i,j] <<- D
+  
+  ## greedy search backwards
+  while(FIRST && s>1)
+  {
+    s <- s-1
+    D <- (DATA[[i]]$x[t]-DATA[[j]]$x[s])^2 + (DATA[[i]]$y[t]-DATA[[j]]$y[s])^2
+    if(D<DIST[t,i,j])
+    {
+      NN[t,i,j] <<- s
+      DIST[t,i,j] <<- D
+    }
+    else
+    { break }
+  }
+  
+  ## greedy search forwards
+  while(LAST && s<res.time)
+  {
+    s <- s+1
+    D <- (DATA[[i]]$x[t]-DATA[[j]]$x[s])^2 + (DATA[[i]]$y[t]-DATA[[j]]$y[s])^2
+    if(D<DIST[t,i,j])
+    {
+      NN[t,i,j] <<- s
+      DIST[t,i,j] <<- D
+    }
+    else
+    { break }
+  }
+  
+  return()
+} # search()
+
+## greedy search forward
+for(t in 1:res.time)
+{
+  for(i in 1:n) { for(j in 1:n) { search(t,i,j) } }
+  
+  # copy to next
+  if(t<res.time)
+  {
+    NN[t+1,,] <- NN[t,,]
+    DIST[t+1,,] <- DIST[t,,]
+  }
+} # for(t in 1:res)
+
+# store results
+NN.0 <- NN
+DIST.0 <- DIST
+
+
+
+
 
 
 
