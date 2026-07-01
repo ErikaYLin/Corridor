@@ -11,6 +11,6 @@ The `ctmm R` package and related materials can be found here: https://github.com
 * `corridor_figures.R` (IN DEVELOPMENT): Generating generic figures for visualizing outputs with sample data for presentations. Figures related to specific case studies and/or manuscript preparation can be found in the scripts for those respective studies.
 * `corridor_nonresident.R` (IN DEVELOPMENT): Testing code for non-resident movement models with corridor estimation.
 * `corridor_sensitivity.R` (IN DEVELOPMENT): Comparative sensitivity analysis for sampling parameters across traditional occurrence distributions and cross-sectional KDE corridor distributions.
-* `corridor_sensitivity.R`  (IN DEVELOPMENT): Improved sensitivity analysis to corridor traversal count, using a form of leave-one-out cross-validation.
+* `corridor_sensitivity_traversals.R`  (IN DEVELOPMENT): Improved sensitivity analysis to corridor traversal count, using a form of leave-one-out cross-validation.
 * `ct_sdm.R` (IN DEVELOPMENT): Preliminary testing for camera trap data integration in species distribution modeling and resource selection.
 
