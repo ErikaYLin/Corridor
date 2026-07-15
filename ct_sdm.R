@@ -16,34 +16,55 @@ load("data/bassing_etal_2022_data/all_spp_tracks.RData")  # telemetry all specie
 dem30 <- raster::raster("data/bassing_etal_2022_data/spatial data/DEM_30m.tif")  # SRTM digital elevation model, 30m res
 roads <- raster::raster("data/bassing_etal_2022_data/spatial data/road_density_1km.tif")  # total length of roads per 1 km^2, 1000m res
 slope <- raster::raster("data/bassing_etal_2022_data/spatial data/slope_aspect.tif")  # 0.00027 degree slope derived from DEM, 30m res
-forest18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2018.tif")
-forest19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2019.tif")
-shrub18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2018.tif")
-shrub19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2019.tif")
-grass18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2018.tif")
-grass19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2019.tif")
+forest18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2018.tif")  # % mixed forest w/in 250m radius of observation, 2018
+forest19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2019.tif")  # % mixed forest w/in 250m radius of observation, 2019
+shrub18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2018.tif")  # % xeric shrub w/in 250m radius of observation, 2018
+shrub19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2019.tif")  # % xeric shrub w/in 250m radius of observation, 2019
+grass18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2018.tif")  # % xeric grass w/in 250m radius of observation, 2018
+grass19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2019.tif")  # % xeric grass w/in 250m radius of observation, 2019
 
-# Named list of raster layers
-R <- list(DEM = dem30, road_density = roads, # slope = slope,  # slope is a large file
-          percforest2018 = forest18, percforest2019 = forest19, 
-          percshrub2019 = shrub18, percshrub2019 = shrub19, 
-          percgrass2018 = grass18, percgrass2019 = grass19)
-# R_stack <- raster::stack(dem30, roads, slope, forest18, forest19, shrub18, shrub19, grass18, grass19)
-## diff extents and projections (WGS84 vs. GRS80)
+# NOTE: Authors obtained road density and landcover habitat covariates from Cascadia Biodiversity Watch TerrAdapt: Cascadia tool (30m res)
+## Road density calculated as total road length per 1 km (incl. highways, residential roads, service roads)
+## Categorical landcover (19 classes) reclassified into 6 landcover classes (forest, xeric shrub, xeric grass, mesic grass, developed, water)
+## Used a moving window analysis to calculate the % of each landcover class w/in 250 m radius of each observation (CT observation?)
+## (incl. % mixed forest, % xeric grass, % xeric shrub in their analyses because they made up the bulk of the classes in the study areas
+## Standardized all habitat covariate data (centered on 0, SD = 1)
+
 
 # Data wrangling ----
 
+## Rasters ----
+
+## For full raster data cleaning and wrangling, see `population_rsf.R`
+
+# Named list of raster layers (read all layers into memory)
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist.rda")
+
+# Load rasters with NAs replaced by 0s
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_noNA.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_noNA.rda")
+
+# Load raster list for Year 1 for testing
+# save(R_short, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_year1.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_year1.rda")
+
+# Load standardized raster list
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_standardized.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_standardized.rda")
+
+
+## CT data ----
+
+# TODO:
+## Fix individual track colors to color-match overlapping species across seasons
+## Filter/clean CT data by temporal autocorrelation of detection/non-detection (variogram)
+
+# Load cleaned telemetry data for reference
+load(file = "data/bassing_etal_2022_data/tracks_all_cleaned.rda")
+
 # Make consistent naming scheme across telemetry and camera trap data
-
-names(all_spp_tracks)  # list of tracking data grouped by species and season
-
-# Shorten deer names for consistent naming scheme: "species_season"
-names(all_spp_tracks)[1] <- "md_summer"  # "mule_deer_summer" -> "md_summer"
-names(all_spp_tracks)[2] <- "md_winter"
-names(all_spp_tracks)[5] <- "wtd_summer"  # "whitetailed_deer_summer" -> "wtd_summer"
-names(all_spp_tracks)[6] <- "wtd_winter"
-
-# Change colnames to match format needed for `telemetry`
+## Change colnames to match format needed for `telemetry`
 colnames(all_spp_camtrap)
 colnames(all_spp_camtrap)[2] <- "Lat"
 colnames(all_spp_camtrap)[3] <- "Long"
@@ -53,318 +74,27 @@ colnames(all_spp_camtrap)[7] <- "Img_Time"
 all_spp_camtrap$Species <- tolower(all_spp_camtrap$Species)  # lowercase
 all_spp_camtrap$Species[all_spp_camtrap$Species == "white-tailed deer"] <- "wtd"
 all_spp_camtrap$Species[all_spp_camtrap$Species == "mule deer"] <- "md"
+species <- sort(unique(all_spp_camtrap$Species))  # 7 species, alphabetical order
+
+# Add indicator columns for study year to telemetry data
+## Add an empty indicator column for each year
+all_spp_camtrap$Year1 <- NA
+all_spp_camtrap$Year2 <- NA
+
+# Indicate the year of each location point (1 = yes, 0 = no, per column)
+all_spp_camtrap$Year1[grepl("2018", all_spp_camtrap$Date)] <- 1
+all_spp_camtrap$Year2[grepl("2018", all_spp_camtrap$Date)] <- 0
+all_spp_camtrap$Year2[grepl("2019", all_spp_camtrap$Date)] <- 1
+all_spp_camtrap$Year1[grepl("2019", all_spp_camtrap$Date)] <- 0
+all_spp_camtrap$Year2[grepl("2020", all_spp_camtrap$Date)] <- 1  # assign 2020 data points to Year 2
+all_spp_camtrap$Year1[grepl("2020", all_spp_camtrap$Date)] <- 0
+
+# Convert to factor
+all_spp_camtrap$Year1 <- as.factor(all_spp_camtrap$Year1)
+all_spp_camtrap$Year2 <- as.factor(all_spp_camtrap$Year2)
 
 # Create column for study area to match telemetry data
 all_spp_camtrap$StudyArea <- ifelse(grepl("NE", all_spp_camtrap$CameraLocation), "NE", "OK")
-
-## Telemetry data ----
-
-all_spp_tracks <- all_spp_tracks[order(names(all_spp_tracks))]  # alphabetical order
-species <- sort(unique(all_spp_camtrap$Species))  # 7 species, alphabetical order
-
-# Convert to listed dataframes to `telemetry` objects
-tracks_all <- lapply(all_spp_tracks, 
-                     function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea"))})
-for (i in 1:length(tracks_all)) {
-  tracks_all[[i]] <- tracks_all[[i]][order(names(tracks_all[[i]]))]  # alphabetize IDs
-}
-## Some individuals were tracks across seasons, while others were only tracked for 1 or 2
-
-# Match projections for species across seasons
-for (i in 1:length(tracks_all)) {
-  projection(tracks_all[[i]]) <- median(tracks_all[[1]])
-}
-
-# Match individuals across seasons for plotting colors
-## Combine data from summer and winter
-tracks_species <- list()
-for (i in seq(1, 13, by = 2)) { # for each species
-  
-  # Combine tracking data for each species
-  tracks_species[[i]] <- rbind(all_spp_tracks[[i]], all_spp_tracks[[i+1]])
-  tracks_species[[i]] <- tracks_species[[i]][order(tracks_species[[i]]$time),] 
-}
-tracks_species <- Filter(Negate(is.null), tracks_species)
-names(tracks_species) <- species
-
-# Convert to listed dataframes to `telemetry` objects
-tracks_species <- lapply(tracks_species, 
-                     function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea"))})
-# for (i in 1:length(tracks_all)) {
-#   tracks_all[[i]] <- tracks_all[[i]][order(names(tracks_all[[i]]))]  # alphabetize IDs
-# }
-## Some individuals were tracks across seasons, while others were only tracked for 1 or 2
-
-# Match projections for species across seasons
-for (i in 1:length(tracks_species)) {
-  projection(tracks_species[[i]]) <- projection(tracks_all[[1]])
-}
-
-
-### Preliminary visualization of tracking data ----
-# par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-
-# TODO:
-## Fix individual track colors to color-match overlapping species across seasons
-
-## Bobcat
-
-## TEST:
-## bobcat color-matching (STILL HAS ISSUES)
-colors_bobcat <- color(tracks_species$bobcat, by = "individual")
-colors_bobcat <- sapply(colors_bobcat, '[', 1)
-
-png(file = "figures/bassing_etal_2022/bobcat_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$bobcat_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-130000,110000), ylim = c(-45000,57000), 
-     col = color(tracks_species$bobcat, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Bobcat Telemetry", line = 2, cex = 1.5, font = 2)  # bold
-plot(tracks_all$bobcat_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-130000,110000), ylim = c(-45000,57000),
-     col = color(tracks_species$bobcat, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-png(file = "figures/bassing_etal_2022/bobcat_tracks_noerror.png",  # no error for clarity
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$bobcat_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-130000,110000), ylim = c(-45000,57000), 
-     col = colors_bobcat,  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Bobcat Telemetry", line = 2, cex = 1.5, font = 2)  # bold
-plot(tracks_all$bobcat_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-130000,110000), ylim = c(-45000,57000),
-     col = colors_bobcat,
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## Cougar
-png(file = "figures/bassing_etal_2022/cougar_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$cougar_summer, xlim = c(-150000,150000), ylim = c(-70000,85000), 
-     col = color(tracks_species$cougar, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Cougar Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$cougar_winter, xlim = c(-150000,150000), ylim = c(-70000,85000), 
-     col = color(tracks_species$cougar, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-png(file = "figures/bassing_etal_2022/cougar_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$cougar_summer, xlim = c(-150000,150000), ylim = c(-70000,85000), 
-     col = color(tracks_species$cougar, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Cougar Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$cougar_winter, xlim = c(-150000,150000), ylim = c(-70000,85000), 
-     col = color(tracks_species$cougar, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## Coyote
-png(file = "figures/bassing_etal_2022/coyote_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$coyote_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$coyote, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Coyote Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$coyote_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$coyote, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-png(file = "figures/bassing_etal_2022/coyote_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$coyote_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), 
-     col = color(tracks_species$coyote, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Coyote Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$coyote_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), 
-     col = color(tracks_species$coyote, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## Elk
-png(file = "figures/bassing_etal_2022/elk_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$elk_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$elk, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Elk Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$elk_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$elk, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-png(file = "figures/bassing_etal_2022/elk_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$elk_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), 
-     col = color(tracks_species$elk, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Elk Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$elk_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), 
-     col = color(tracks_species$elk, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## Mule deer
-
-## TEST:
-### Mule deer used to test performance of `ctmm::color` for 100+ individuals with high overlap
-### `tictoc` used to track computation time
-
-png(file = "figures/bassing_etal_2022/md_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$md_summer, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$md, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Mule Deer Telemetry", line = 2, cex = 1.5, font = 2)
-# tictoc::tic()
-plot(tracks_all$md_winter, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$md, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-# tictoc::toc()  # 62.28 sec elapsed
-
-# For testing purposes (w/out raster layer):
-tictoc::tic()
-plot(tracks_all$md_winter, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$md, by = "individual"))
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-tictoc::toc()  # 13.65 sec elapsed
-
-# For testing purposes (w/out raster layer), using IID KDEs:
-tictoc::tic()
-# IID_md <- lapply(tracks_species$md, ctmm.fit)
-# KDE_md <- akde(tracks_species$md, IID_md, grid = list(dr = c(100,100)))  # VERY SLOW
-# names(KDE_md) <- names(tracks_species$md)
-# save(KDE_md, file = "data/bassing_etal_2022_data/IID_KDE_md.rda")
-png(file = "figures/bassing_etal_2022/md_tracks_iid_kde_dem.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$md_summer, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(KDE_md, by = "individual"),  # is the IID KDE too constrained to separate the colors? Many overlapping tracks have similar colors
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Mule Deer Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$md_winter, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(KDE_md, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-tictoc::toc()  # 9541.241 sec elapsed, ~159 min, ~2.65 hour
-
-
-png(file = "figures/bassing_etal_2022/md_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$md_summer, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$md, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Mule Deer Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$md_winter, xlim = c(-150000,150000), ylim = c(-70000,90000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$md, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## Wolf
-png(file = "figures/bassing_etal_2022/wolf_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$wolf_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$wolf, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Gray Wolf Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$wolf_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$wolf, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-# For reference when there are fewer indivs (see md above)
-tictoc::tic()
-plot(tracks_all$wolf_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$wolf, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-tictoc::toc()
-
-png(file = "figures/bassing_etal_2022/wolf_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$wolf_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$wolf, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("Gray Wolf Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$wolf_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$wolf, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-## White-tailed deer
-png(file = "figures/bassing_etal_2022/wtd_tracks.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$wtd_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$wtd, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2")
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("White-Tailed Deer Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$wtd_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$wtd, by = "individual"),
-     R = dem30, col.R = "gray2")
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-png(file = "figures/bassing_etal_2022/wtd_tracks_noerror.png",
-    width = 4800, height = 6000, res = 600)
-par(mfrow = c(2,1), mai = c(1,0.8,0.8,0.3), omi = c(0,0.15,0.15,0.15))  # Compare seasons
-plot(tracks_all$wtd_summer, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000), 
-     col = color(tracks_species$wtd, by = "individual"),  # color-match indivs
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Summers 2018, 2019", line = 0.5)
-mtext("White-Tailed Deer Telemetry", line = 2, cex = 1.5, font = 2)
-plot(tracks_all$wtd_winter, xlim = c(-150000,150000), ylim = c(-70000,70000), #xlim = c(-150000,150000), ylim = c(-50000,80000), # xlim = c(-140000,110000), ylim = c(-50000,70000),
-     col = color(tracks_species$wtd, by = "individual"),
-     R = dem30, col.R = "gray2", error = FALSE, pch = 16, cex = 0.25)
-title(main = "Winter 2018/19, 2019/20", line = 0.5)
-dev.off()
-
-
-## CT data ----
-
-# TODO: 
-## Filter/clean CT data by temporal autocorrelation of detection/non-detection (variogram)
 
 # Separate by study site for data cleaning
 camtrap_NE <- all_spp_camtrap[all_spp_camtrap$StudyArea == "NE",]
@@ -392,29 +122,13 @@ for (sp in species) {
   for (season in unique(all_spp_camtrap$Season)) {
     ct_all_seasons[[paste(sp, season, sep = "_")]] <- as.telemetry(
       all_spp_camtrap[all_spp_camtrap$Season == season & all_spp_camtrap$Species == sp,],
-      keep = c("Count", "Season", "StudyArea", "CameraLocation", "AF", "AM", "AU", "OS", "UNK"))
+      keep = c("Count", "Season", "StudyArea", "CameraLocation", "AF", "AM", "AU", "OS", "UNK", "Year1", "Year2"))
   }
 }
 # ct_all_seasons <- ct_all_seasons[order(names(ct_all_seasons))]  # alphabetical order
 
 
-## TEST
-## Must be separated by cam first to calculate the diffs
-# diff <- data.frame(diff = c(1000,diff(camtrap_NE$timestamp)), count = camtrap_NE$Count, 
-#                    cam = camtrap_NE$CameraLocation, species = camtrap_NE$Species)
-# # diff <- diff[diff$diff > 3,]  # remove < 3 seconds (within the same sequence)
-# diff$minutes <- diff$diff/60  # convert to mins
-# diff <- diff[diff$diff <= 60,]  # less than or equal to 1 hour (in mins)
-# par(mfrow = c(2,1))
-# for (NEsp in unique(diff$species)) {
-#   hist(diff$minutes[diff$species == NEsp], 
-#        breaks = seq(0, 60, by = 1), #max(diff$minutes)/2000,  # divide by mins/day
-#        main = NEsp, xlab = "mins")
-#   plot(acf(diff$minutes[diff$species == NEsp], plot = FALSE), main = NEsp)
-# }
-
-
-## TEST
+## TEST for CT independent detections
 
 # Northeast study area
 diff_NE <- data.frame(diff = NULL, count = NULL, cam = NULL, species = NULL)
@@ -464,6 +178,7 @@ for (sp in species) {
   plot(acf(diff_OK$minutes[diff_OK$species == sp], plot = FALSE, lag.max = 15), main = paste(sp, "OK"))
 }  # ~2 mins should be sufficient for individual detection
 
+
 # Separate by species and season
 ct_all <- list()
 for (sp in species) {
@@ -482,7 +197,7 @@ for (i in 1:length(ct_all)) {
   # Convert to telemetry object
   ct_all[[i]] <- as.telemetry(ct_all[[i]], 
                               keep = c("Count", "Season", "StudyArea", "CameraLocation", 
-                                       "AF", "AM", "AU", "OS", "UNK"))
+                                       "AF", "AM", "AU", "OS", "UNK", "Year1", "Year2"))
 }
 
 # Match projections to tracking data
@@ -592,16 +307,16 @@ dev.off()
 
 # Camera trap SDM
 
-## DEM layer only
-test <- raster::readAll(dem30)  # large object
+# Include year indicator from CT data for landcover covariates
+formula <- as.formula("~ DEM + road_density + slope + Year1:percforest2018 + 
+                      Year2:percforest2019 + Year1:percshrub2018 + Year2:percshrub2019 + 
+                      Year1:percgrass2018 + Year2:percgrass2019")
+
 tictoc::tic()
-bobcat_sdm <- sdm.fit(ct_all$bobcat_summer, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 62.834 sec elapsed
-## ERROR: in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-### only for list of raster layers without `raster::readAll`
-## WARNING: In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+# Fit SDM
+bobcat_sdm_s <- sdm.fit(ct_all$bobcat_summer, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+tictoc::toc()  # 113.695 sec elapsed (~2 min)
 summary(bobcat_sdm)
-## Weird output (due to warning?)
 # $name
 # [1] "inactive"
 # 
@@ -610,48 +325,87 @@ summary(bobcat_sdm)
 # 0         0         0         0 
 # 
 # $CI
-#                              low  est      high
-# dem30 (1/dem30)      -0.02968246   0 0.02968246
-# area (square meters)  0.00000000 Inf        Inf
+#                                         low          est      high
+# percgrass2019 (1/percgrass2019)   -5.9937798 -0.113857236 5.7660653
+# percgrass2018 (1/percgrass2018)   -5.8833193  0.115188009 6.1136953
+# percshrub2019 (1/percshrub2019)   -4.4034623 -0.108988245 4.1854859
+# percshrub2018 (1/percshrub2018)   -3.9309239  0.104752466 4.1404289
+# percforest2019 (1/percforest2019) -0.7640081 -0.005001089 0.7540059
+# percforest2018 (1/percforest2018) -0.9372944  0.017542879 0.9723802
+# slope (1/slope)                   -0.2561488 -0.008036673 0.2400755
+# road_density (1/road_density)     -0.4095359  0.036502735 0.4825414
+# DEM (1/DEM)                       -0.2281425  0.006850720 0.2418439
+# area (square meters)               0.0000000          Inf       Inf  <-- unable to get an area estimate
 
-any(is.na(raster::values(dem30)))  # not due to any NAs in the raster values
-any(raster::values(dem30) == 0)  # there are zeros in the raster values
-which(raster::values(dem30) == 0)  # only 5 zeros
-
-## TEST
 # Try akde on the CT data
-bobcat_ctrange <- akde(data = ct_all$bobcat_summer, bobcat_sdm, R = list(dem30 = test), 
+bobcat_ctrange_s <- akde(data = ct_all$bobcat_summer, bobcat_sdm, R = R,
                        grid = list(dr = c(100,100)))
-## Can't plot due to DOF[area] == 0
+## Can't fit due to DOF[area] == 0
 
-## Road density layer only
-test <- raster::readAll(roads)  # large object
-tictoc::tic()
-bobcat_sdm2 <- sdm.fit(ct_all$bobcat_summer, R = list(roads = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 0.664 sec elapsed
-## ERROR: in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-## In addition: Warning messages:
-# 1: In FUN(X[[i]], ...) : Objective function failure at c(roads=0)
-# 2: In FUN(X[[i]], ...) : Objective function failure at c(roads=-0.0001220703125)
-# 3: In FUN(X[[i]], ...) : Objective function failure at c(roads=0.0001220703125)
-# Error in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-# Error in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-# Error in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-# Error in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
-## WARNING: In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
-summary(bobcat_sdm2)
+# Model selection across covariates
+bobcat_sdm.select_s <- sdm.select(ct_all$bobcat_summer, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
 
-## % Mixed forest layer only
-test <- raster::readAll(forest18)  # large object
-tictoc::tic()
-bobcat_sdm3 <- sdm.fit(ct_all$bobcat_summer, R = list(forest18 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 1.745 sec elapsed
-## WARNING:
-# 1: In FUN(X[[i]], ...) : Objective function failure at c(=0, =0.00010714285459384)
-# 2: In FUN(X[[i]], ...) : Objective function failure at c(=0, =0.000107131819795927)
-# 3: In FUN(X[[i]], ...) : Objective function failure at c(=0, =0.000107159446570641)
-summary(bobcat_sdm3)
-## Weird output, can't get a finite area estimate? (from objective function failures?)
+
+### Year 1 Landcover only ----
+# Model selection across covariates
+bobcat_sdm.select_s <- sdm.select(ct_all$bobcat_summer, R = R_short, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+
+
+# ## DEM layer only
+# test <- raster::readAll(dem30)  # large object
+# tictoc::tic()
+# bobcat_sdm <- sdm.fit(ct_all$bobcat_summer, R = , integrator = "Riemann", trace = TRUE)
+# tictoc::toc()  # 62.834 sec elapsed
+# ## ERROR: in if (sqrt(sum((RESCALE - par)^2)) > DIM * .Machine$double.eps) { : missing value where TRUE/FALSE needed
+# ### only for list of raster layers without `raster::readAll`
+# ## WARNING: In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+# summary(bobcat_sdm)
+# ## Weird output (due to warning?)
+# 
+# any(is.na(raster::values(dem30)))  # not due to any NAs in the raster values
+# any(raster::values(dem30) == 0)  # there are zeros in the raster values
+# which(raster::values(dem30) == 0)  # only 5 zeros
+# 
+# ## TEST
+# # Try akde on the CT data
+# bobcat_ctrange <- akde(data = ct_all$bobcat_summer, bobcat_sdm, R = list(dem30 = test), 
+#                        grid = list(dr = c(100,100)))
+# ## Can't plot due to DOF[area] == 0
+
+
+### Okanogan site ----
+
+# Subset indivs from Okanogan site
+sites <- ct_all$bobcat_summer$StudyArea  # identify sites
+bobcat_OKs <- ct_all$bobcat_summer[which(sites == "OK"),]  # subset CT data
+
+# Fit SDM
+bobcat_sdm_OKs <- sdm.fit(bobcat_OKs, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+summary(bobcat_sdm_OKs)
 # $name
 # [1] "inactive"
 # 
@@ -660,144 +414,157 @@ summary(bobcat_sdm3)
 # 0         0         0         0 
 # 
 # $CI
-#                             low      est     high
-# forest18 (1/forest18) -0.4821686 0.279223 1.040615
-# area (square meters)   0.0000000      Inf      Inf
+#                                           low          est       high
+# percgrass2019 (1/percgrass2019)   -14.1535122 -0.254215930 13.6450803
+# percgrass2018 (1/percgrass2018)   -13.8914732  0.260107295 14.4116878
+# percshrub2019 (1/percshrub2019)    -5.1826004  0.064232109  5.3110646
+# percshrub2018 (1/percshrub2018)    -5.1235030 -0.051203842  5.0210953
+# percforest2019 (1/percforest2019)  -1.0016905 -0.014876858  0.9719368
+# percforest2018 (1/percforest2018)  -1.3147672  0.036147206  1.3870616
+# slope (1/slope)                    -0.4434842  0.009655702  0.4627956
+# road_density (1/road_density)      -1.0163786 -0.021505093  0.9733684
+# DEM (1/DEM)                        -0.6009545 -0.020134034  0.5606864
+# area (square meters)                0.0000000          Inf        Inf  <-- unable to get an area estimate
 
-## TEST
-# Try akde on the CT data
-bobcat_ctrange <- akde(data = ct_all$bobcat_summer, bobcat_sdm3, R = list(forest18 = test), 
-                       grid = list(dr = c(100,100)))
-## Can't plot due to DOF[area] == 0
+# Model selection across covariates
+bobcat_sdm.select_OKs <- sdm.select(bobcat_OKs, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
 
 
-# TEST
-## Using fake raster data w/ only positive data (and no zeros)
-r <- dem30
-raster::values(r) <- runif(length(raster::values(dem30)), min = 1, max = 50)
-# raster::projection(r) <- ctmm::projection(ct_all$bobcat_summer)
-plot(ct_all$bobcat_summer, R = r)
-
-tictoc::tic()
-bobcat_sdmfake <- sdm.fit(ct_all$bobcat_summer, R = list(fake = r), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 64.059 sec elapsed
-## WARNING:
-# In FUN(X[[i]], ...) :
-#   Objective function failure at c(=0, =1.43992140007614e-06)
-summary(bobcat_sdmfake)
-## Even with a fake raster?
-# $name
-# [1] "inactive"
+# ## DEM layer only
+# test <- raster::readAll(dem30)  # large object
+# bobcat_sdm_OKs <- sdm.fit(bobcat_OKs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
+# # 34 Warnings: In FUN(X[[i]], ...) : Objective function failure at c(=0, =7.13150492285974e-05)
+# summary(bobcat_sdm_OKs)  # infinite area
 # 
-# $DOF
-# mean      area diffusion     speed 
-# 0         0         0         0 
-# 
-# $CI
-#                             low           est       high
-# fake (1/fake)        -0.01360456 -0.0001886374 0.01322728
-# area (square meters)  0.00000000           Inf        Inf
+# # Range distribution
+# bobcat_range_OKs <- akde(data = bobcat_OKs, CTMM = bobcat_sdm_OKs, R = list(dem30 = test))
+# ## Warning: Fit object returned. DOF[area] = 0
 
 
-## TEST: Separate study sites
+### Northeast site ----
 
-# Okanogan
-bobcat_OKs <- ct_all$bobcat_summer[ct_all$bobcat_summer$StudyArea == "OK",]
-
-## DEM layer only
-test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-bobcat_sdm_OKs <- sdm.fit(bobcat_OKs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 66.461 sec elapsed
-# 34 Warnings: In FUN(X[[i]], ...) : Objective function failure at c(=0, =7.13150492285974e-05)
-summary(bobcat_sdm_OKs)  # infinite area
-
-# Range distribution
-bobcat_range_OKs <- akde(data = bobcat_OKs, CTMM = bobcat_sdm_OKs, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
-
-
-# Northeast
-bobcat_NEs <- ct_all$bobcat_summer[ct_all$bobcat_summer$StudyArea == "NE",]
+# Subset indivs from Northeast site
+bobcat_NEs <- ct_all$bobcat_summer[which(sites == "NE"),]  # subset CT data
 # saveRDS(bobcat_NEs, file = "data/bassing_etal_2022_data/bobcat_ct_NEs.rds")  # save for easy access (debug)
 
-## DEM layer only
-test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-bobcat_sdm_NEs <- sdm.fit(bobcat_NEs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 64.034 sec elapsed
-# 47 Warnings: In FUN(X[[i]], ...) : Objective function failure at c(=0, =3.56658396845821e-05)
-summary(bobcat_sdm_NEs)  # infinite area
+# Fit SDM
+bobcat_sdm_NEs <- sdm.fit(bobcat_NEs, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+# Warning message:
+#   In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+summary(bobcat_sdm_NEs)  # output may not be reliable
+# $name
+# [1] "inactive"
+# 
+# $DOF
+# mean      area diffusion     speed 
+# 0         0         0         0 
+# 
+# $CI
+#                                             low          est         high
+# percgrass2019 (1/percgrass2019)     -486.488411 -0.152133740   486.184144
+# percgrass2018 (1/percgrass2018)     -560.131320  0.093663458   560.318647
+# percshrub2019 (1/percshrub2019)   -17549.086769 -0.030485810 17549.025797
+# percshrub2018 (1/percshrub2018)     -882.605935 -0.005625307   882.594685
+# percforest2019 (1/percforest2019)    -41.066813 -0.033450563    40.999912
+# percforest2018 (1/percforest2018)    -66.836768  0.014172995    66.865114
+# slope (1/slope)                       -6.652750 -0.020916158     6.610918
+# road_density (1/road_density)         -5.125100  0.058257419     5.241615
+# DEM (1/DEM)                           -8.885235  0.018795399     8.922826
+# area (square meters)                   0.000000          Inf          Inf
 
-# Range distribution
-bobcat_range_NEs <- akde(data = bobcat_NEs, CTMM = bobcat_sdm_NEs, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+# Model selection across covariates
+bobcat_sdm.select_NEs <- sdm.select(bobcat_NEs, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
 
 
-### TEST: Telemetry ----
-
-## DEM layer only
+# ## DEM layer only
 # test <- raster::readAll(dem30)  # large object
-# bobcat_tel_sdm <- sdm.fit(tracks_all$bobcat_summer, R = list(dem30 = test), 
-#                           integrator = "Riemann", trace = TRUE)
-## SDM only for single telemetry object
-
-# TODO: guess, select, akdes, pkde, pop rsf
-
-
-
-
-
+# tictoc::tic()
+# bobcat_sdm_NEs <- sdm.fit(bobcat_NEs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
+# tictoc::toc()  # 64.034 sec elapsed
+# # 47 Warnings: In FUN(X[[i]], ...) : Objective function failure at c(=0, =3.56658396845821e-05)
+# summary(bobcat_sdm_NEs)  # infinite area
+# 
+# # Range distribution
+# bobcat_range_NEs <- akde(data = bobcat_NEs, CTMM = bobcat_sdm_NEs, R = list(dem30 = test))
+# ## Warning: Fit object returned. DOF[area] = 0
 
 
 ## Cougar ----
 
 # Camera trap SDM
 
-## DEM layer only
-test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-cougar_sdm <- sdm.fit(ct_all$cougar_summer, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 62.834 sec elapsed
-# No error, but no area
+# Fit SDM
+cougar_sdm <- sdm.fit(ct_all$cougar_summer, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
 summary(cougar_sdm)
 
-cougar_range_s <- akde(data = ct_all$cougar_summer, CTMM = cougar_sdm, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+
+# Try akde on the CT data
+cougar_ctrange <- akde(data = ct_all$cougar_summer, cougar_sdm, R = R,
+                       grid = list(dr = c(100,100)))
+## Can't fit due to DOF[area] == 0
+
+# Model selection across covariates
+cougar_sdm.select <- sdm.select(ct_all$cougar_summer, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
 
 
-## TEST: Separate study sites
-
-# Okanogan
-cougar_OKs <- ct_all$cougar_summer[ct_all$cougar_summer$StudyArea == "OK",]
-
-## DEM layer only
-# test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-cougar_sdm_OKs <- sdm.fit(cougar_OKs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 65.317 sec elapsed
-# 50 Warnings: In FUN(X[[i]], ...) : Objective function failure at c(=0, =7.34751244689306e-05)
-summary(cougar_sdm_OKs)  # infinite area
-
-# Range distribution
-cougar_range_OKs <- akde(data = cougar_OKs, CTMM = cougar_sdm_OKs, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+# ### Year 1 Landcover only
+# # Model selection across covariates
+# cougar_sdm.select <- sdm.select(ct_all$cougar_summer, R = R_short, verbose = TRUE) # integrator = "Riemann", 
 
 
-# Northeast
-cougar_NEs <- ct_all$cougar_summer[ct_all$cougar_summer$StudyArea == "NE",]
+### Okanogan site ----
 
-## DEM layer only
-# test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-cougar_sdm_NEs <- sdm.fit(cougar_NEs, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 63.386 sec elapsed
-# No error, but no area
-summary(cougar_sdm_NEs)  # infinite area
+# Subset indivs from Okanogan site
+sites <- ct_all$cougar_summer$StudyArea  # identify sites
+cougar_OKs <- ct_all$cougar_summer[which(sites == "OK"),]  # subset CT data
 
-# Range distribution
-cougar_range_NEs <- akde(data = cougar_NEs, CTMM = cougar_sdm_NEs, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+# Fit SDM
+cougar_sdm_OKs <- sdm.fit(cougar_OKs, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+summary(cougar_sdm_OKs)
+
+
+# Model selection across covariates
+cougar_sdm.select_OKs <- sdm.select(cougar_OKs, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+
+
+### Northeast site ----
+
+# Subset indivs from Northeast site
+cougar_NEs <- ct_all$cougar_summer[which(sites == "NE"),]  # subset CT data
+
+# Fit SDM
+cougar_sdm_NEs <- sdm.fit(cougar_NEs, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+# Warning message:
+#   In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+summary(cougar_sdm_NEs)  # output may not be reliable
+
+
+# Model selection across covariates
+cougar_sdm.select_NEs <- sdm.select(cougar_NEs, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
 
 
 ## Coyote ----
@@ -1059,50 +826,148 @@ wtd_range_NEs <- akde(data = wtd_NEs, CTMM = wtd_sdm_NEs, R = list(dem30 = test)
 
 # Camera trap SDM
 
-## DEM layer only
-# test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-bobcat_sdm_w <- sdm.fit(ct_all$bobcat_winter, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 62.41 sec elapsed
-# No errors, no area
-summary(bobcat_sdm_w)  # infinite area
-
-bobcat_range_w <- akde(data = ct_all$bobcat_winter, CTMM = bobcat_sdm_w, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
-
-
-## TEST: Separate study sites
-
-# Okanogan
-bobcat_OKw <- ct_all$bobcat_winter[ct_all$bobcat_winter$StudyArea == "OK",]
-
-## DEM layer only
-# test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-bobcat_sdm_OKw <- sdm.fit(bobcat_OKw, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 63.184 sec elapsed
-# No errors, no area
-summary(bobcat_sdm_OKw)  # infinite area
-
-# Range distribution
-bobcat_range_OKw <- akde(data = bobcat_OKw, CTMM = bobcat_sdm_OKw, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+# Fit SDM
+bobcat_sdm_w <- sdm.fit(ct_all$bobcat_winter, R = R, formula = formula, trace = TRUE) # integrator = "Riemann", 
+# Warning message:
+#   In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+## Too little data?
+summary(bobcat_sdm_w)
+# $name
+# [1] "inactive"
+# 
+# $DOF
+# mean      area diffusion     speed 
+# 0         0         0         0 
+# 
+# $CI
+#                                    low est high
+# percgrass2019 (1/percgrass2019)   -Inf NaN  Inf
+# percgrass2018 (1/percgrass2018)   -Inf NaN  Inf
+# percshrub2019 (1/percshrub2019)   -Inf NaN  Inf
+# percshrub2018 (1/percshrub2018)   -Inf NaN  Inf
+# percforest2019 (1/percforest2019) -Inf NaN  Inf
+# percforest2018 (1/percforest2018) -Inf NaN  Inf
+# slope (1/slope)                   -Inf NaN  Inf
+# road_density (1/road_density)     -Inf NaN  Inf
+# DEM (1/DEM)                       -Inf NaN  Inf
+# area (square meters)                 0 Inf  Inf  <-- unable to get ANY parameter estimates
 
 
-# Northeast
-bobcat_NEw <- ct_all$bobcat_winter[ct_all$bobcat_winter$StudyArea == "NE",]
+# Try akde on the CT data
+bobcat_ctrange_w <- akde(data = ct_all$bobcat_winter, bobcat_sdm_w, R = R,
+                         grid = list(dr = c(100,100)))
+## Can't fit due to DOF[area] == 0
 
-## DEM layer only
-# test <- raster::readAll(dem30)  # large object
-tictoc::tic()
-bobcat_sdm_NEw <- sdm.fit(bobcat_NEw, R = list(dem30 = test), integrator = "Riemann", trace = TRUE)
-tictoc::toc()  # 62.574 sec elapsed
-# No errors, no area
-summary(bobcat_sdm_NEw)  # infinite area
+# Model selection across covariates
+bobcat_sdm.select_w <- sdm.select(ct_all$bobcat_winter, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
 
-# Range distribution
-bobcat_range_NEw <- akde(data = bobcat_NEw, CTMM = bobcat_sdm_NEw, R = list(dem30 = test))
-## Warning: Fit object returned. DOF[area] = 0
+# ### Year 1 Landcover only
+# # Model selection across covariates
+# bobcat_sdm.select <- sdm.select(ct_all$bobcat_summer, R = R_short, verbose = TRUE) # integrator = "Riemann", 
+
+
+### Okanogan site ----
+
+# Subset indivs from Okanogan site
+sites <- ct_all$bobcat_winter$StudyArea  # identify sites
+bobcat_OKw <- ct_all$bobcat_winter[which(sites == "OK"),]  # subset CT data
+
+# Fit SDM
+bobcat_sdm_OKw <- sdm.fit(bobcat_OKw, R = R, formula = formula, trace = TRUE) # integrator = "Riemann",
+# Warning message:
+#   In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+summary(bobcat_sdm_OKw)
+# $name
+# [1] "inactive"
+# 
+# $DOF
+# mean      area diffusion     speed 
+# 0         0         0         0 
+# 
+# $CI
+#                                    low est high
+# percgrass2019 (1/percgrass2019)   -Inf NaN  Inf
+# percgrass2018 (1/percgrass2018)   -Inf NaN  Inf
+# percshrub2019 (1/percshrub2019)   -Inf NaN  Inf
+# percshrub2018 (1/percshrub2018)   -Inf NaN  Inf
+# percforest2019 (1/percforest2019) -Inf NaN  Inf
+# percforest2018 (1/percforest2018) -Inf NaN  Inf
+# slope (1/slope)                   -Inf NaN  Inf
+# road_density (1/road_density)     -Inf NaN  Inf
+# DEM (1/DEM)                       -Inf NaN  Inf
+# area (square meters)                 0 Inf  Inf  <-- unable to get ANY parameter estimates
+
+# Model selection across covariates
+bobcat_sdm.select_OKw <- sdm.select(bobcat_OKw, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+
+### Northeast site ----
+
+# Subset indivs from Northeast site
+bobcat_NEw <- ct_all$bobcat_winter[which(sites == "NE"),]  # subset CT data
+
+# Fit SDM
+bobcat_sdm_NEw <- sdm.fit(bobcat_NEw, R = R, formula = formula, trace = TRUE) # integrator = "Riemann",
+# Warning message:
+#   In cov.loglike(hess, grad) : MLE is near a boundary or optimizer failed.
+summary(bobcat_sdm_NEw)  # output may not be reliable
+# $name
+# [1] "inactive"
+# 
+# $DOF
+# mean      area diffusion     speed 
+# 0         0         0         0 
+# 
+# $CI
+# low est         high
+# percgrass2019 (1/percgrass2019)   -5.588910e+08   0 5.588910e+08
+# percgrass2018 (1/percgrass2018)            -Inf NaN          Inf
+# percshrub2019 (1/percshrub2019)   -8.834909e+10   0 8.834909e+10
+# percshrub2018 (1/percshrub2018)   -8.901987e+10   0 8.901987e+10
+# percforest2019 (1/percforest2019) -1.734289e+06   0 1.734289e+06
+# percforest2018 (1/percforest2018) -2.501898e+07   0 2.501898e+07
+# slope (1/slope)                   -2.291356e+05   0 2.291356e+05
+# road_density (1/road_density)     -2.562477e+05   0 2.562477e+05
+# DEM (1/DEM)                       -2.643001e+05   0 2.643001e+05
+# area (square meters)               0.000000e+00 Inf          Inf
+
+# Model selection across covariates
+bobcat_sdm.select_NEw <- sdm.select(bobcat_NEw, R = R, formula = formula, verbose = TRUE) # integrator = "Riemann", 
+# Error in eigen(M) : 0 x 0 matrix
+# In addition: Warning messages:
+#   1: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# 2: In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
+# Error in eigen(M) : 0 x 0 matrix
+# Error in `[<-`(`*tmp*`, , i, value = Daprox[, 1]) : 
+#   subscript out of bounds
+# In addition: Warning message:
+#   In min(t.lo, t.up, na.rm = TRUE) :
+#   no non-missing arguments to min; returning Inf
 
 
 ## Cougar ----

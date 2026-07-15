@@ -1,4 +1,4 @@
-# Population-Level Resource Selection from Telemetry for Species Distribution Model
+# Population-Level Resource Selection from Telemetry
 
 # Load packages
 library(ctmm)  # continuous-time movement modeling
@@ -16,22 +16,113 @@ load("data/bassing_etal_2022_data/all_spp_tracks.RData")  # telemetry all specie
 dem30 <- raster::raster("data/bassing_etal_2022_data/spatial data/DEM_30m.tif")  # SRTM digital elevation model, 30m res
 roads <- raster::raster("data/bassing_etal_2022_data/spatial data/road_density_1km.tif")  # total length of roads per 1 km^2, 1000m res
 slope <- raster::raster("data/bassing_etal_2022_data/spatial data/slope_aspect.tif")  # 0.00027 degree slope derived from DEM, 30m res
-forest18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2018.tif")
-forest19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2019.tif")
-shrub18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2018.tif")
-shrub19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2019.tif")
-grass18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2018.tif")
-grass19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2019.tif")
+forest18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2018.tif")  # % mixed forest w/in 250m radius of observation, 2018
+forest19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_forestmix_2019.tif")  # % mixed forest w/in 250m radius of observation, 2019
+shrub18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2018.tif")  # % xeric shrub w/in 250m radius of observation, 2018
+shrub19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_shrub_2019.tif")  # % xeric shrub w/in 250m radius of observation, 2019
+grass18 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2018.tif")  # % xeric grass w/in 250m radius of observation, 2018
+grass19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2019.tif")  # % xeric grass w/in 250m radius of observation, 2019
+
+# NOTE: Authors obtained road density and landcover habitat covariates from Cascadia Biodiversity Watch TerrAdapt: Cascadia tool (30m res)
+## Road density calculated as total road length per 1 km (incl. highways, residential roads, service roads)
+## Categorical landcover (19 classes) reclassified into 6 landcover classes (forest, xeric shrub, xeric grass, mesic grass, developed, water)
+## Used a moving window analysis to calculate the % of each landcover class w/in 250 m radius of each observation (CT observation?)
+## (incl. % mixed forest, % xeric grass, % xeric shrub in their analyses because they made up the bulk of the classes in the study areas
+## Standardized all habitat covariate data (centered on 0, SD = 1)
+
+
+# Data wrangling ----
+
+## Rasters ----
 
 # Named list of raster layers
-R <- list(DEM = dem30, road_density = roads, # slope = slope,  # slope is a large file
-          percforest2018 = forest18, percforest2019 = forest19, 
-          percshrub2019 = shrub18, percshrub2019 = shrub19, 
-          percgrass2018 = grass18, percgrass2019 = grass19)
+## Read all raster layers into memory
+R <- list(DEM = raster::readAll(dem30), 
+          road_density = raster::readAll(roads), 
+          slope = raster::readAll(slope),  # slope is a large file
+          percforest2018 = raster::readAll(forest18), 
+          percforest2019 = raster::readAll(forest19), 
+          percshrub2018 = raster::readAll(shrub18), 
+          percshrub2019 = raster::readAll(shrub19), 
+          percgrass2018 = raster::readAll(grass18), 
+          percgrass2019 = raster::readAll(grass19))
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist.rda")
 # R_stack <- raster::stack(dem30, roads, slope, forest18, forest19, shrub18, shrub19, grass18, grass19)
 ## diff extents and projections (WGS84 vs. GRS80)
 
-# Data wrangling ----
+# # Raster layers w/ only 2018 landcover
+# R_short <- list(DEM = raster::readAll(dem30),
+#                 road_density = raster::readAll(roads), 
+#                 slope = raster::readAll(slope),  # slope is a large file
+#                 percforest2018 = raster::readAll(forest18),
+#                 percshrub2018 = raster::readAll(shrub18),
+#                 percgrass2018 = raster::readAll(grass18))
+
+# Check for NAs
+any(is.na(raster::getValues(R$DEM)))  # FALSE
+any(is.na(raster::getValues(R$road_density)))  # TRUE
+any(is.na(raster::getValues(R$slope)))  # TRUE
+any(is.na(raster::getValues(R$percforest2018)))  # TRUE
+any(is.na(raster::getValues(R$percforest2019)))  # TRUE
+any(is.na(raster::getValues(R$percshrub2018)))  # TRUE
+any(is.na(raster::getValues(R$percshrub2019)))  # TRUE
+any(is.na(raster::getValues(R$percgrass2018)))  # TRUE
+any(is.na(raster::getValues(R$percgrass2019)))  # TRUE
+
+# Replace NAs with 0 for now
+for (i in 2:length(R)) {
+  R[[i]][is.na(R[[i]])] <- 0
+}
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_noNA.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_noNA.rda")
+
+# Extract rasters for Year 1 for testing
+R_short <- list(DEM = R[[1]], road_density = R[[2]], slope = R[[3]],
+                percforest2018 = R[[4]], percshrub2018 = R[[6]], percgrass2018 = R[[8]])
+# save(R_short, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_year1.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_year1.rda")  # not standardized
+
+# Check for collinearity in landcover rasters for each year
+## If all sum to 100% for each cell, will need to remove one as reference layer
+landcover18 <- raster::stack(R$percforest2018, R$percshrub2018, R$percgrass2018)  # stack by year
+landcover19 <- raster::stack(R$percforest2019, R$percshrub2019, R$percgrass2019)
+sum_landcov18 <- raster::calc(landcover18, sum)  # check sums
+sum_landcov19 <- raster::calc(landcover19, sum)
+## Do not sum to 1 (100%)
+
+dat_lc <- data.frame(forest18 = raster::getValues(R$percforest2018), 
+                     shrub18 = raster::getValues(R$percshrub2018),
+                     grass18 = raster::getValues(R$percgrass2018),
+                     forest19 = raster::getValues(R$percforest2019), 
+                     shrub19 = raster::getValues(R$percshrub2019),
+                     grass19 = raster::getValues(R$percgrass2019))
+
+# Pairwise correlation check
+cor(dat_lc$forest18, dat_lc$shrub18)
+cor(dat_lc$forest18, dat_lc$grass18)
+cor(dat_lc$grass18, dat_lc$shrub18)
+cor(dat_lc$forest19, dat_lc$shrub19)
+cor(dat_lc$forest19, dat_lc$grass19)
+cor(dat_lc$grass19, dat_lc$shrub19)
+## Low pairwise correlation coefficients
+
+# Check for collinearity between DEM and slope
+cor(raster::getValues(R$DEM), raster::getValues(R$slope))  # acceptably low correlation
+
+# Standardize habitat covariates for RSF formula
+## Save mean and standard deviation for each covariate
+MEANS <- lapply(R, function(x) { mean(raster::getValues(x))})
+SDS <- lapply(R, function(x) {sd(raster::getValues(x))})
+
+for (i in 1:length(R)) {
+  raster::values(R[[i]]) <- (raster::values(R[[i]])-MEANS[[i]]) / SDS[[i]]  # standardize
+}
+# save(R, file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_standardized.rda")
+load(file = "data/bassing_etal_2022_data/habitat_vars_rasterlist_standardized.rda")
+
+
+## Telemetry ----
 
 # Make consistent naming scheme across telemetry and camera trap data
 
@@ -51,9 +142,30 @@ all_spp_camtrap$Species[all_spp_camtrap$Species == "white-tailed deer"] <- "wtd"
 all_spp_camtrap$Species[all_spp_camtrap$Species == "mule deer"] <- "md"
 species <- sort(unique(all_spp_camtrap$Species))  # 7 species, alphabetical order
 
+# Add indicator columns for study year to telemetry data
+for (i in 1:length(all_spp_tracks)) {
+  
+  # Add an empty indicator column for each year
+  all_spp_tracks[[i]]$Year1 <- NA
+  all_spp_tracks[[i]]$Year2 <- NA
+  
+  # Indicate the year of each location point (1 = yes, 0 = no, per column)
+  all_spp_tracks[[i]]$Year1[grepl("2018", all_spp_tracks[[i]]$time)] <- 1
+  all_spp_tracks[[i]]$Year2[grepl("2018", all_spp_tracks[[i]]$time)] <- 0
+  all_spp_tracks[[i]]$Year2[grepl("2019", all_spp_tracks[[i]]$time)] <- 1
+  all_spp_tracks[[i]]$Year1[grepl("2019", all_spp_tracks[[i]]$time)] <- 0
+  all_spp_tracks[[i]]$Year2[grepl("2020", all_spp_tracks[[i]]$time)] <- 1  # assign 2020 data points to Year 2
+  all_spp_tracks[[i]]$Year1[grepl("2020", all_spp_tracks[[i]]$time)] <- 0
+  
+  # Convert to factor
+  all_spp_tracks[[i]]$Year1 <- as.factor(all_spp_tracks[[i]]$Year1)
+  all_spp_tracks[[i]]$Year2 <- as.factor(all_spp_tracks[[i]]$Year2)
+}
+
 # Convert to listed dataframes to `telemetry` objects
 tracks_all <- lapply(all_spp_tracks, 
-                     function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea"))})
+                     function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea", 
+                                                           "Year1", "Year2"))})
 for (i in 1:length(tracks_all)) {
   tracks_all[[i]] <- tracks_all[[i]][order(names(tracks_all[[i]]))]  # alphabetize IDs
 }
@@ -63,6 +175,8 @@ for (i in 1:length(tracks_all)) {
 for (i in 1:length(tracks_all)) {
   projection(tracks_all[[i]]) <- median(tracks_all[[1]])
 }
+# save(tracks_all, file = "data/bassing_etal_2022_data/tracks_all_cleaned.rda")
+load(file = "data/bassing_etal_2022_data/tracks_all_cleaned.rda")
 
 # Match individuals across seasons for plotting colors
 ## Combine data from summer and winter
@@ -78,7 +192,8 @@ names(tracks_species) <- species
 
 # Convert to listed dataframes to `telemetry` objects
 tracks_species <- lapply(tracks_species, 
-                         function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea"))})
+                         function(x) {as.telemetry(x, keep = c("Sex", "Season", "StudyArea",
+                                                               "Year1", "Year2"))})
 # for (i in 1:length(tracks_all)) {
 #   tracks_all[[i]] <- tracks_all[[i]][order(names(tracks_all[[i]]))]  # alphabetize IDs
 # }
@@ -380,6 +495,7 @@ load(file = "data/bassing_etal_2022_data/outputs/FITS_bobcat_summer_tel2.rda")
 # Estimate indiv home ranges
 AKDE_sbobcat <- akde(tracks_all$bobcat_summer, CTMM = FITS_sbobcat, weights = TRUE)  # weighted AKDE
 # save(AKDE_sbobcat, file = "data/bassing_etal_2022_data/outputs/wAKDE_bobcat_summer_tel.rda")  # maybe not needed
+load(file = "data/bassing_etal_2022_data/outputs/wAKDE_bobcat_summer_tel.rda")
 
 # Plot indiv home ranges
 for (nam in names(tracks_all$bobcat_summer)) {
@@ -400,7 +516,7 @@ dev.off()
 # Population range
 PKDE_sbobcat <- pkde(tracks_all$bobcat_summer, UD = AKDE_sbobcat, 
                      weights = TRUE, grid = list(dr = c(100,100)))  # weighted pkde
-save(PKDE_sbobcat, file = "data/bassing_etal_2022_data/outputs/PKDE_bobcat_summer_tel2.rda")
+# save(PKDE_sbobcat, file = "data/bassing_etal_2022_data/outputs/PKDE_bobcat_summer_tel2.rda")
 load(file = "data/bassing_etal_2022_data/outputs/PKDE_bobcat_summer_tel2.rda")
 
 # Plot population range estimate
@@ -413,23 +529,57 @@ dev.off()
 
 # Population integrated resource selection function (iRSF)
 
-# Test on DEM data only
-test <- raster::readAll(dem30)
+# Include year indicator from telemetry for landcover covariates
+formula <- as.formula("~ DEM + road_density + slope + Year1:percforest2018 + 
+                      Year2:percforest2019 + Year1:percshrub2018 + Year2:percshrub2019 + 
+                      Year1:percgrass2018 + Year2:percgrass2019")
+                      # tracks_all$bobcat_summer$Year1:percforest2018 + 
+                      # tracks_all$bobcat_summer$Year2:percforest2019 + 
+                      # tracks_all$bobcat_summer$Year1:percshrub2018 + 
+                      # tracks_all$bobcat_summer$Year2:percshrub2019 +
+                      # tracks_all$bobcat_summer$Year1:percgrass2018 + 
+                      # tracks_all$bobcat_summer$Year2:percgrass2019")
+# Year 1 landcover only
+formula_y1 <- as.formula("~ DEM + road_density + slope + percforest2018 + percshrub2018 + percgrass2018")
 
 # iRSF for each individual
 RSF_sbobcat <- list()  # empty list
 for (nam in names(tracks_all$bobcat_summer)) {
   RSF_sbobcat[[nam]] <- rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]], 
-                                R = list(dem30 = test))  #, integrator = "Riemann")
+                                R = R, formula = formula, 
+                                integrator = "Riemann")
 }
-# save(RSF_sbobcat, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel2.rda")
-load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel2.rda")
-# Warning messages:
-#   1: In rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]],  :
-#       Calculation stopped before 1.5 Gb allocation.
-#   2: In rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]],  :
-#       Calculation stopped before 1.7 Gb allocation.
-## Should be fine
+save(RSF_sbobcat, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel.rda")
+load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel.rda")
+
+###
+
+
+# Population iRSF
+RSF_sbobcat <- rsf.fit(tracks_all$bobcat_summer, UD = PKDE_sbobcat, R = R, formula = formula)
+## ISSUE 1 - reference variable should not be needed (see "pop_rsf_debug.R")
+#           (no factors in raster data, % landcover does not appear to have issues with collinearity)
+# Error in if (reference == "auto") { : argument is of length zero
+
+# Population iRSF w/ Year 1 landcover only
+RSF_sbobcat <- rsf.fit(tracks_all$bobcat_summer, UD = PKDE_sbobcat, R = R, formula = formula_y1)
+# Error: crs not found: is it missing?
+## GEO <- c('longitude','latitude')
+## xy <- ctmm:::get.telemetry(tracks_all$bobcat_summer,GEO)  <-- comes out to empty numeric
+### Somehow missing long/lat, unable to extract telemetry data?? But there is a projection??
+projection(R$DEM) <- projection(tracks_all$bobcat_summer[[1]])
+projection(R$slope) <- projection(tracks_all$bobcat_summer[[1]])
+
+RSF_sbobcat <- rsf.fit(tracks_all$bobcat_summer, UD = PKDE_sbobcat, R = R, formula = formula_y1)
+# test <- ctmm:::project(xy, to = raster::projection(R[[1]]))  # this works though?
+
+# TEST with no formula
+RSF_sbobcat <- rsf.fit(tracks_all$bobcat_summer, UD = PKDE_sbobcat, R = R[-c(5,7,9)])
+# Error: crs not found: is it missing?
+## Must be same issue as above, see ctmm:::get.telemetry()
+
+
+###
 
 # Updated indiv home ranges with iRSF
 rAKDE_sbobcat <- akde(tracks_all$bobcat_summer, CTMM = RSF_sbobcat, R = list(dem30 = test), weights = TRUE)
@@ -454,6 +604,49 @@ plot(tracks_all$bobcat_summer, UD = rPKDE_sbobcat, col = COL, R = dem30, col.R =
      main = "Bobcat Summer Cross-Site RSF-PKDE")
 ## Very large and uncertain, perhaps better to separate by study site
 dev.off()
+
+
+# # Test on DEM data only
+# test <- raster::readAll(dem30)
+# 
+# # iRSF for each individual
+# RSF_sbobcat <- list()  # empty list
+# for (nam in names(tracks_all$bobcat_summer)) {
+#   RSF_sbobcat[[nam]] <- rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]], 
+#                                 R = list(dem30 = test))  #, integrator = "Riemann")
+# }
+# # save(RSF_sbobcat, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel2.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_tel2.rda")
+# # Warning messages:
+# #   1: In rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]],  :
+# #       Calculation stopped before 1.5 Gb allocation.
+# #   2: In rsf.fit(tracks_all$bobcat_summer[[nam]], UD = AKDE_sbobcat[[nam]],  :
+# #       Calculation stopped before 1.7 Gb allocation.
+# ## Should be fine
+# 
+# # Updated indiv home ranges with iRSF
+# rAKDE_sbobcat <- akde(tracks_all$bobcat_summer, CTMM = RSF_sbobcat, R = list(dem30 = test), weights = TRUE)
+# # save(rAKDE_sbobcat, file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_tel.rda")  # maybe not needed
+# load(file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_tel.rda")
+# 
+# # Plot indiv home ranges
+# for (nam in names(tracks_all$bobcat_summer)) {
+#   plot(tracks_all$bobcat_summer[nam], UD = rAKDE_sbobcat[nam], main = nam)
+# }
+# 
+# # Population range with iRSF
+# rPKDE_sbobcat <- pkde(tracks_all$bobcat_summer, UD = rAKDE_sbobcat, R = list(dem30 = test), weights = TRUE)
+# # save(rPKDE_sbobcat, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_tel.rda")  # maybe not needed
+# load(file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_tel.rda")
+# 
+# # Plot population range estimate
+# png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer.png", 
+#     width = 4800, height = 4200, res = 600)
+# plot(tracks_all$bobcat_summer, UD = rPKDE_sbobcat, col = COL, R = dem30, col.R = "gray2",
+#      xlim = c(-200000,180000), ylim = c(-130000,150000),
+#      main = "Bobcat Summer Cross-Site RSF-PKDE")
+# ## Very large and uncertain, perhaps better to separate by study site
+# dev.off()
 
 
 ### Okanogan site ----
@@ -489,26 +682,38 @@ dev.off()
 
 # Population integrated resource selection function (iRSF)
 
-# Test on DEM data only
-# test <- raster::readAll(dem30)
+#### Year 1 Landcover only ----
 
-# iRSF for each individual
-RSF_bobcat_OKs <- list()  # empty list
-for (nam in names(bobcat_OKs)) {
-  RSF_bobcat_OKs[[nam]] <- rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], 
-                                R = list(dem30 = test))
-}
-# save(RSF_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
-load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
-# Warnings:
-# 1: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = list(dem30 = test)) :
-#   Calculation stopped before 1.5 Gb allocation.
-# 2: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = list(dem30 = test)) :
+# formula <- as.formula("~ dem30 + road_density + slope + percforest2018 + percshrub2018 + percgrass2018")
+
+# # iRSF for each individual
+# RSF_bobcat_OKs <- list()  # empty list
+# for (nam in names(bobcat_OKs)) {
+#   RSF_bobcat_OKs[[nam]] <- rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]],
+#                                 R = R_short) #, integrator = "Riemann")
+# }
+# # save(RSF_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
+# Warning messages:
+# 1: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = R_short) :
 #   Calculation stopped before 1.7 Gb allocation.
-## Should be fine.
+# 2: In cov.loglike(hess, grad) :
+#   MLE is near a boundary or optimizer failed.
+# 3: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = R_short) :
+#   Calculation stopped before 1.3 Gb allocation.
+# 4: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = R_short) :
+#   Calculation stopped before 1.9 Gb allocation.
+summary(RSF_bobcat_OKs)
+sapply(RSF_bobcat_OKs, function(x) {print(x$VAR.loglike)})  # seems small enough
+sapply(RSF_bobcat_OKs, function(x) {print(x$beta)})
+
+# Population iRSF
+RSF_bobcat_OKs <- rsf.fit(bobcat_OKs, UD = AKDE_bobcat_OKs, R = R_short) #, integrator = "Riemann")
+save(RSF_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/popRSF_bobcat_summer_OK_tel.rda")
+load(file = "data/bassing_etal_2022_data/outputs/popRSF_bobcat_summer_OK_tel.rda")
 
 # Updated indiv home ranges with iRSF
-rAKDE_bobcat_OKs <- akde(bobcat_OKs, CTMM = RSF_bobcat_OKs, R = list(dem30 = test), weights = TRUE)
+rAKDE_bobcat_OKs <- akde(bobcat_OKs, CTMM = RSF_bobcat_OKs, R = R_short, weights = TRUE)
 # save(rAKDE_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_OK_tel.rda")  # maybe not needed
 load(file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_OK_tel.rda")
 
@@ -518,17 +723,68 @@ for (nam in names(bobcat_OKs)) {
 }
 
 # Population range with iRSF
-rPKDE_bobcat_OKs <- pkde(bobcat_OKs, UD = rAKDE_bobcat_OKs, R = list(dem30 = test), weights = TRUE)
+rPKDE_bobcat_OKs <- pkde(bobcat_OKs, UD = rAKDE_bobcat_OKs, R = R_short, weights = TRUE)
 # save(rPKDE_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_OK_tel.rda")
 load(file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_OK_tel.rda")
 
+mean_RSF_bobcat_OKs <- mean(RSF_bobcat_OKs)
+# save(mean_RSF_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/mean_RSF_bobcat_summer_OK_tel.rda")
+load(file = "data/bassing_etal_2022_data/outputs/mean_RSF_bobcat_summer_OK_tel.rda")
+
+# Calculate population suitability raster
+suitability_bobcat_OKs <- suitability(CTMM = rPKDE_bobcat_OKs, R = R_short)  # doesn't work with a list of telemetry objects
+## Do I need to pass this through mean() first?
+
 # Plot population range estimate
-png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_OK.png", 
+png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_OK.png",
     width = 4800, height = 4200, res = 600)
-plot(bobcat_OKs, UD = rPKDE_bobcat_OKs, col = COL, R = dem30, col.R = "gray2",
+plot(bobcat_OKs, UD = rPKDE_bobcat_OKs, col = COL, R = dem30, col.R = "gray2", #R = suitability_bobcat_OKs
      main = "Okanogan Bobcat Summer RSF-PKDE")
 ## Large CIs, very uncertain
 dev.off()
+
+
+
+# Test on DEM data only
+# test <- raster::readAll(dem30)
+
+# # iRSF for each individual
+# RSF_bobcat_OKs <- list()  # empty list
+# for (nam in names(bobcat_OKs)) {
+#   RSF_bobcat_OKs[[nam]] <- rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], 
+#                                 R = list(dem30 = test))
+# }
+# # save(RSF_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_OK_tel.rda")
+# # Warnings:
+# # 1: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = list(dem30 = test)) :
+# #   Calculation stopped before 1.5 Gb allocation.
+# # 2: In rsf.fit(bobcat_OKs[[nam]], UD = AKDE_bobcat_OKs[[nam]], R = list(dem30 = test)) :
+# #   Calculation stopped before 1.7 Gb allocation.
+# ## Should be fine.
+# 
+# # Updated indiv home ranges with iRSF
+# rAKDE_bobcat_OKs <- akde(bobcat_OKs, CTMM = RSF_bobcat_OKs, R = list(dem30 = test), weights = TRUE)
+# # save(rAKDE_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_OK_tel.rda")  # maybe not needed
+# load(file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_OK_tel.rda")
+# 
+# # Plot indiv home ranges
+# for (nam in names(bobcat_OKs)) {
+#   plot(bobcat_OKs[nam], UD = rAKDE_bobcat_OKs[nam], main = nam)
+# }
+# 
+# # Population range with iRSF
+# rPKDE_bobcat_OKs <- pkde(bobcat_OKs, UD = rAKDE_bobcat_OKs, R = list(dem30 = test), weights = TRUE)
+# # save(rPKDE_bobcat_OKs, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_OK_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_OK_tel.rda")
+# 
+# # Plot population range estimate
+# png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_OK.png", 
+#     width = 4800, height = 4200, res = 600)
+# plot(bobcat_OKs, UD = rPKDE_bobcat_OKs, col = COL, R = dem30, col.R = "gray2",
+#      main = "Okanogan Bobcat Summer RSF-PKDE")
+# ## Large CIs, very uncertain
+# dev.off()
 
 
 ### Northeast site ----
@@ -561,21 +817,39 @@ dev.off()
 
 # Population integrated resource selection function (iRSF)
 
-# Test on DEM data only
-# test <- raster::readAll(dem30)
+#### Year 1 Landcover only ----
 
-# iRSF for each individual
-RSF_bobcat_NEs <- list()  # empty list
-for (nam in names(bobcat_NEs)) {
-  RSF_bobcat_NEs[[nam]] <- rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], 
-                                   R = list(dem30 = test))
-}
-# save(RSF_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
-load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
-# No warnings, so the indivs with incomplete calculation are from Okanogan
+# formula <- as.formula("~ dem30 + road_density + slope + percforest2018 + percshrub2018 + percgrass2018")
+
+# # iRSF for each individual
+# RSF_bobcat_NEs <- list()  # empty list
+# for (nam in names(bobcat_NEs)) {
+#   RSF_bobcat_NEs[[nam]] <- rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]],
+#                                    R = R_short, integrator = "Riemann")
+# }
+# # save(RSF_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
+# # Warning messages:
+# # 1: In rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], R = R_short) :
+# #   Calculation stopped before 1.5 Gb allocation.
+# # 2: In rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], R = R_short) :
+# #   Calculation stopped before 1.7 Gb allocation.
+# # 3: In cov.loglike(hess, grad) :
+# #   MLE is near a boundary or optimizer failed.
+# # 4: In rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], R = R_short) :
+# #   Calculation stopped before 1.3 Gb allocation.
+# # 5: In cov.loglike(hess, grad) :
+# #   MLE is near a boundary or optimizer failed.
+# 
+# summary(RSF_bobcat_OKs)
+# sapply(RSF_bobcat_OKs, function(x) {print(x$VAR.loglike)})  # seems small enough
+# sapply(RSF_bobcat_OKs, function(x) {print(x$beta)})
+
+# Population iRSF
+RSF_bobcat_NEs <- rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], R = R_short) #, integrator = "Riemann")
 
 # Updated indiv home ranges with iRSF
-rAKDE_bobcat_NEs <- akde(bobcat_NEs, CTMM = RSF_bobcat_NEs, R = list(dem30 = test), weights = TRUE)
+rAKDE_bobcat_NEs <- akde(bobcat_NEs, CTMM = RSF_bobcat_NEs, R = R_short, weights = TRUE)
 # save(rAKDE_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_NE_tel.rda")  # maybe not needed
 load(file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_NE_tel.rda")
 
@@ -585,17 +859,62 @@ for (nam in names(bobcat_NEs)) {
 }
 
 # Population range with iRSF
-rPKDE_bobcat_NEs <- pkde(bobcat_NEs, UD = rAKDE_bobcat_NEs, R = list(dem30 = test), weights = TRUE)
-# save(rPKDE_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_NE_tel.rda")
+rPKDE_bobcat_NEs <- pkde(bobcat_NEs, UD = rAKDE_bobcat_NEs, R = R_short, weights = TRUE)
+save(rPKDE_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_NE_tel.rda")
 load(file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_NE_tel.rda")
 
+mean_RSF_bobcat_NEs <- mean(RSF_bobcat_NEs)
+# save(mean_RSF_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/mean_RSF_bobcat_summer_NE_tel.rda")
+load(file = "data/bassing_etal_2022_data/outputs/mean_RSF_bobcat_summer_NE_tel.rda")
+
+# Calculate population suitability raster
+suitability_bobcat_NEs <- suitability(data = bobcatNEs, CTMM = RSF_bobcat_NEs, R = R_short)
+## Do I need to pass this through mean() first?
+
 # Plot population range estimate
-png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_NE.png", 
+png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_NE.png",
     width = 4800, height = 4200, res = 600)
-plot(bobcat_NEs, UD = rPKDE_bobcat_NEs, col = COL, R = dem30, col.R = "gray2",
+plot(bobcat_NEs, UD = rPKDE_bobcat_NEs, col = COL, R = dem30, col.R = "gray2", #R = suitability_bobcat_NEs
      main = "Northeast Bobcat Summer RSF-PKDE")
 ## Large CIs, very uncertain
 dev.off()
+
+
+# # Test on DEM data only
+# # test <- raster::readAll(dem30)
+# 
+# # iRSF for each individual
+# RSF_bobcat_NEs <- list()  # empty list
+# for (nam in names(bobcat_NEs)) {
+#   RSF_bobcat_NEs[[nam]] <- rsf.fit(bobcat_NEs[[nam]], UD = AKDE_bobcat_NEs[[nam]], 
+#                                    R = list(dem30 = test))
+# }
+# # save(RSF_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/RSF_bobcat_summer_NE_tel.rda")
+# # No warnings, so the indivs with incomplete calculation are from Okanogan
+# 
+# # Updated indiv home ranges with iRSF
+# rAKDE_bobcat_NEs <- akde(bobcat_NEs, CTMM = RSF_bobcat_NEs, R = list(dem30 = test), weights = TRUE)
+# # save(rAKDE_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_NE_tel.rda")  # maybe not needed
+# load(file = "data/bassing_etal_2022_data/outputs/rsfAKDE_bobcat_summer_NE_tel.rda")
+# 
+# # Plot indiv home ranges
+# for (nam in names(bobcat_NEs)) {
+#   plot(bobcat_NEs[nam], UD = rAKDE_bobcat_NEs[nam], main = nam)
+# }
+# 
+# # Population range with iRSF
+# rPKDE_bobcat_NEs <- pkde(bobcat_NEs, UD = rAKDE_bobcat_NEs, R = list(dem30 = test), weights = TRUE)
+# # save(rPKDE_bobcat_NEs, file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_NE_tel.rda")
+# load(file = "data/bassing_etal_2022_data/outputs/rsfPKDE_bobcat_summer_NE_tel.rda")
+# 
+# # Plot population range estimate
+# png(file = "figures/bassing_etal_2022/bobcat_tracks_rsf_pkde_summer_NE.png", 
+#     width = 4800, height = 4200, res = 600)
+# plot(bobcat_NEs, UD = rPKDE_bobcat_NEs, col = COL, R = dem30, col.R = "gray2",
+#      main = "Northeast Bobcat Summer RSF-PKDE")
+# ## Large CIs, very uncertain
+# dev.off()
 
 
 ## Cougar ----
