@@ -17,6 +17,8 @@ projection(data) <- median(data)  # center projection on geometric median of dat
 DATA <- data[c('36827', '36831', '36840', '36935', '36999', '37009', '37010')]
 projection(DATA) <- median(DATA)  # center projection on geometric median of data
 
+plot(DATA, col = color(DATA, by = "individual"))
+
 # Keep data within a certain range of distance along x-axis
 for (i in 1:length(DATA)) {
   DATA[[i]] <- DATA[[i]][DATA[[i]]$x > 19*1000,]
@@ -81,7 +83,8 @@ for (i in 1:length(DATA)) {
   corfits2 <- corfits[-i]
   
   # Occurrence distribution
-  OCC_ALL[[1]][[i]] <- occurrence(data = DATA2, CTMM = corfits2, grid = list(dr = c(100,100)))
+  OCC_ALL[[1]][[i]] <- occurrence(data = DATA2, CTMM = corfits2, 
+                                  grid = list(dr = c(100,100), align.to.origin = TRUE))
   
 }  # LOOCV occurrence
 
@@ -109,7 +112,8 @@ for (i in 1:length(DATA)) {
   corfits2 <- corfits[-i]
   
   # Corridor distribution
-  COR_ALL[[1]][[i]] <- ctmm:::corridor(data = DATA2, CTMM = corfits2, grid = list(dr = c(100,100)))
+  COR_ALL[[1]][[i]] <- ctmm:::corridor(data = DATA2, CTMM = corfits2, 
+                                       grid = list(dr = c(100,100), align.to.origin = TRUE))
   
 }  # LOOCV corridor
 
@@ -118,17 +122,25 @@ load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 
 # mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
 ## uncertainties not yet propagated for corridor()
-## Assign same ctmm model to COR UDs to allow mean
-# for (i in 1:length(COR_ALL[[1]])) {
-#     COR_ALL[[1]][[i]]@CTMM <- corfits[[1]]
-#   }
-#
-# COR[[1]] <- mean(COR_ALL[[1]])  # average resulting distributions
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[1]])) {
+    COR_ALL[[1]][[i]]@CTMM <- corfits[[1]]
+  }
+
+COR[[1]] <- mean(COR_ALL[[1]])  # average resulting distributions
+
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
+# COR[[1]] <- c(COR_ALL[[1]][[1]], COR_ALL[[1]][[2]], COR_ALL[[1]][[3]],
+#               COR_ALL[[1]][[4]], COR_ALL[[1]][[5]], COR_ALL[[1]][[6]],
+#               COR_ALL[[1]][[7]])
+# COR[[1]] <- mean(COR[[1]])  # average resulting distributions
+
 # save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV.rda")
-load(file = "data/mule_deer/corridor_sensitivity_LOOCV.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV.rda")  # OLD MANUAL FIX
 
 par(mfrow = c(1,1))
 plot(COR[[1]], level = NA)
@@ -156,7 +168,8 @@ for (i in 1:length(DATA[-1])) {
     
     # Occurrence distribution
     OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- occurrence(data = DATA3, CTMM = corfits3,
-                                                         grid = list(dr = c(100,100)))
+                                                         grid = list(dr = c(100,100), 
+                                                                     align.to.origin = TRUE))
     # OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- paste(names(DATA3))  # CHECK
   }
 }  # L2OCV occurrence
@@ -196,12 +209,25 @@ for (i in 1:length(DATA[-1])) {
     
     # Corridor distribution
     COR_ALL[[2]][[paste(i,j+1,sep = ",")]] <- ctmm:::corridor(data = DATA3, CTMM = corfits3,
-                                                              grid = list(dr = c(100,100)))
+                                                              grid = list(dr = c(100,100), 
+                                                                          align.to.origin = TRUE))
   }
 }  # L2OCV corridor
 
-# save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[2]])) {
+  COR_ALL[[2]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[2]] <- mean(COR_ALL[[2]])  # average resulting distributions
+
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -241,13 +267,14 @@ for (i in 1:length(DATA[-c(1,2)])) {
      
       # Occurrence distribution
       OCC_ALL[[3]][[paste(i,j+1,m+2,sep = ",")]] <- occurrence(data = DATA4, CTMM = corfits4,
-                                                               grid = list(dr = c(100,100)))
+                                                               grid = list(dr = c(100,100), 
+                                                                           align.to.origin = TRUE))
       # OCC_ALL[[3]][[paste(i,j+1,m+2,sep = ",")]] <- paste(names(DATA4))  # CHECK
     }
   }
 }  # L3OCV occurrence
 
-save(OCC_ALL, file = "data/mule_deer/occurrence_sensitivity_LOOCV_all.rda")
+# save(OCC_ALL, file = "data/mule_deer/occurrence_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/occurrence_sensitivity_LOOCV_all.rda")
 
 # Unlist individual distributions
@@ -289,13 +316,26 @@ for (i in 1:length(DATA[-c(1,2)])) {
       
       # Corridor distribution
       COR_ALL[[3]][[paste(i,j+1,m+2,sep = ",")]] <- ctmm:::corridor(data = DATA4, CTMM = corfits4,
-                                                                    grid = list(dr = c(100,100)))
+                                                                    grid = list(dr = c(100,100), 
+                                                                                align.to.origin = TRUE))
     }  # WARNING: In ctmm:::corridor: Suggest res.time » 2
   }
 }  # L3OCV corridor
 
 # save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[3]])) {
+  COR_ALL[[3]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[3]] <- mean(COR_ALL[[3]])  # average resulting distributions
+
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -342,7 +382,8 @@ for (i in 1:length(DATA[-c(1:3)])) {
         
         # Occurrence distribution
         OCC_ALL[[4]][[paste(i,j+1,m+2,n+3,sep = ",")]] <- occurrence(data = DATA5, CTMM = corfits5,
-                                                                     grid = list(dr = c(100,100)))
+                                                                     grid = list(dr = c(100,100), 
+                                                                                 align.to.origin = TRUE))
         # OCC_ALL[[4]][[paste(i,j+1,m+2,n+3,sep = ",")]] <- paste(names(DATA5))  # CHECK
       }
     }
@@ -398,7 +439,8 @@ for (i in 1:length(DATA[-c(1:3)])) {
         
         # Corridor distribution
         COR_ALL[[4]][[paste(i,j+1,m+2,n+3,sep = ",")]] <- ctmm:::corridor(data = DATA5, CTMM = corfits5,
-                                                                          grid = list(dr = c(100,100)))
+                                                                          grid = list(dr = c(100,100), 
+                                                                                      align.to.origin = TRUE))
       }
       # WARNINGS:
         # 1: In ctmm:::corridor: Suggest res.time » 3
@@ -408,8 +450,20 @@ for (i in 1:length(DATA[-c(1:3)])) {
   }
 }  # L4OCV corridor
 
-save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+# save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[4]])) {
+  COR_ALL[[4]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[4]] <- mean(COR_ALL[[4]])  # average resulting distributions
+
+save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -436,7 +490,8 @@ for (i in 1:length(DATA[-1])) {
     
     # Occurrence distribution
     OCC_ALL[[5]][[paste(i,j+1,sep = ",")]] <- occurrence(data = DATA6, CTMM = corfits6,
-                                                         grid = list(dr = c(100,100)))
+                                                         grid = list(dr = c(100,100), 
+                                                                     align.to.origin = TRUE))
     # OCC_ALL[[5]][[paste(i,j+1,sep = ",")]] <- paste(names(DATA6))  # CHECK
   }
 }  # L5OCV occurrence
@@ -470,7 +525,8 @@ for (i in 1:length(DATA[-1])) {
     
     # Corridor distribution
     COR_ALL[[5]][[paste(i,j+1,sep = ",")]] <- ctmm:::corridor(data = DATA6, CTMM = corfits6,
-                                                              grid = list(dr = c(100,100)))
+                                                              grid = list(dr = c(100,100), 
+                                                                          align.to.origin = TRUE))
   }
   # WARNINGS:
   #   1: In ctmm:::corridor: Suggest res.time » 2
@@ -482,6 +538,18 @@ for (i in 1:length(DATA[-1])) {
 
 # save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[5]])) {
+  COR_ALL[[5]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[5]] <- mean(COR_ALL[[5]])  # average resulting distributions
+
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -506,7 +574,8 @@ for (i in 1:length(DATA)) {
   ## length(DATA7) == 1
 
   # Occurrence distribution
-  OCC_ALL[[6]][[i]] <- occurrence(data = DATA7, CTMM = corfits7, grid = list(dr = c(100,100)))
+  OCC_ALL[[6]][[i]] <- occurrence(data = DATA7, CTMM = corfits7, grid = list(dr = c(100,100), 
+                                                                             align.to.origin = TRUE))
   # OCC_ALL[[6]][[i]] <- paste(names(DATA7))  # CHECK
 }  # L6OCV occurrence
 
@@ -526,7 +595,7 @@ plot(OCC[[6]])
 
 # png(file = "figures/mule_deer/occurrence_paths_LOOCV_full.png", width = 4800, height = 6000, units = "px", res = 600)
 # par(mfrow = c(3,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
-png(file = "figures/mule_deer/occurrence_paths_LOOCV_full.png", width = 4800, height = 6000, units = "px", res = 600)
+png(file = "figures/mule_deer/occurrence_paths_LOOCV_full_fix.png", width = 4800, height = 6000, units = "px", res = 600)
 par(mfrow = c(3,2), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0.25,0.25), cex.main = 1.2)
 # Plot distributions
 plot(OCC[[6]], main = "Leave 0 Traversals Out", xlim = c(-25000,35000), ylim = c(-20000,20000))
@@ -554,12 +623,16 @@ dev.off()
 ## CANNOT EVALUATE CORRIDOR WITH ONLY 1 TRAVERSAL
 # Corridor distribution based on all traversals
 COR_ALL[[6]] <- list()
-COR_ALL[[6]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100)))
+COR_ALL[[6]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
+                                                                         align.to.origin = TRUE))
 
 # save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 
 COR[[6]] <- COR_ALL[[6]]
+
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 # save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV.rda")
@@ -569,7 +642,7 @@ plot(COR[[6]])
 
 # png(file = "figures/mule_deer/corridor_paths_LOOCV_full.png", width = 4800, height = 6000, units = "px", res = 600)
 # par(mfrow = c(3,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
-png(file = "figures/mule_deer/corridor_paths_LOOCV_full.png", width = 4800, height = 6000, units = "px", res = 600)
+png(file = "figures/mule_deer/corridor_paths_LOOCV_full_fix.png", width = 4800, height = 6000, units = "px", res = 600)
 par(mfrow = c(3,2), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0.25,0.25), cex.main = 1.2)
 # Plot distributions
 plot(COR[[6]], level = NA, main = "Leave 0 Traversals Out", xlim = c(-25000,35000), ylim = c(-20000,20000))
@@ -583,7 +656,7 @@ dev.off()
 # Reorder plots to compare ODs and Corridor distributions
 # png(file = "figures/mule_deer/sensitivity_comparison_paths.png", width = 4800, height = 6000, units = "px", res = 600)
 # par(mfrow = c(3,2), mai = c(0.8,0.3,0.7,0), omi = c(0,0.25,0,0.25), mar = c(4,4,2,0.4) + 0.1, cex.main = 1.2)
-png(file = "figures/mule_deer/sensitivity_comparison_paths_LOOCV.png", width = 4800, height = 6000, units = "px", res = 600)
+png(file = "figures/mule_deer/sensitivity_comparison_paths_LOOCV_fix.png", width = 4800, height = 6000, units = "px", res = 600)
 par(mfrow = c(3,2), mai = c(0.6,0.5,0.45,0.15), omi = c(0,0.25,0.25,0.25), cex.main = 1.2)
 # Plot distributions
 plot(OCC[[1]], main = "Leave 1 Traversal Out", xlim = c(-25000,35000), ylim = c(-20000,20000))
@@ -682,7 +755,9 @@ for (i in 1:length(DATA)) {
   corfits2 <- corfits[-i]
   
   # Occurrence distribution
-  OCC_ALL[[1]][[i]] <- occurrence(data = DATA2, CTMM = corfits2, grid = list(dr = c(100,100)))
+  OCC_ALL[[1]][[i]] <- occurrence(data = DATA2, CTMM = corfits2, 
+                                  grid = list(dr = c(100,100), 
+                                              align.to.origin = TRUE))
   
 }  # LOOCV occurrence
 
@@ -708,12 +783,26 @@ for (i in 1:length(DATA)) {
   corfits2 <- corfits[-i]
   
   # Corridor distribution
-  COR_ALL[[1]][[i]] <- ctmm:::corridor(data = DATA2, CTMM = corfits2, grid = list(dr = c(100,100)))
+  COR_ALL[[1]][[i]] <- ctmm:::corridor(data = DATA2, CTMM = corfits2, 
+                                       grid = list(dr = c(100,100), 
+                                                   align.to.origin = TRUE))
   
 }  # LOOCV corridor
 
 # save(COR_ALL, file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[1]])) {
+  COR_ALL[[1]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[1]] <- mean(COR_ALL[[1]])  # average resulting distributions
+
+# save(COR, file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -746,7 +835,8 @@ for (i in 1:length(DATA[-1])) {
     
     # Occurrence distribution
     OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- occurrence(data = DATA3, CTMM = corfits3,
-                                                         grid = list(dr = c(100,100)))
+                                                         grid = list(dr = c(100,100), 
+                                                                     align.to.origin = TRUE))
     # OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- paste(names(DATA3))  # CHECK
   }
 }  # L2OCV occurrence
@@ -786,7 +876,8 @@ for (i in 1:length(DATA[-1])) {
     
     # Corridor distribution
     COR_ALL[[2]][[paste(i,j+1,sep = ",")]] <- ctmm:::corridor(data = DATA3, CTMM = corfits3,
-                                                              grid = list(dr = c(100,100)))
+                                                              grid = list(dr = c(100,100), 
+                                                                          align.to.origin = TRUE))
   } # WARNINGS:
   # 1: In ctmm:::corridor: Suggest res.time » 3
   # 2: In ctmm:::corridor: Suggest res.time » 8   
@@ -794,6 +885,18 @@ for (i in 1:length(DATA[-1])) {
 
 # save(COR_ALL, file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
+
+# mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
+## uncertainties not yet propagated for corridor()
+# Assign same ctmm model to COR UDs to allow mean
+for (i in 1:length(COR_ALL[[2]])) {
+  COR_ALL[[2]][[i]]@CTMM <- corfits[[1]]
+}
+
+COR[[2]] <- mean(COR_ALL[[2]])  # average resulting distributions
+
+# save(COR, file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
 
@@ -823,7 +926,8 @@ choose(4,3)  # 4 combinations
 # }  # L3OCV occurrence
 
 OCC_ALL[[3]] <- list()
-OCC_ALL[[3]] <- occurrence(data = DATA, CTMM = corfits, grid = list(dr = c(100,100)))
+OCC_ALL[[3]] <- occurrence(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
+                                                                    align.to.origin = TRUE))
 
 # save(OCC_ALL, file = "data/jaguar/occurrence_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/occurrence_sensitivity_LOOCV_all.rda")
@@ -865,12 +969,16 @@ dev.off()
 ## CANNOT EVALUATE CORRIDOR WITH ONLY 1 TRAVERSAL
 # Corridor distribution based on all traversals
 COR_ALL[[3]] <- list()
-COR_ALL[[3]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100)))
+COR_ALL[[3]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
+                                                                         align.to.origin = TRUE))
 
 # save(COR_ALL, file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
 
 COR[[3]] <- COR_ALL[[3]]
+
+# save(COR, file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
+load(file = "data/jaguar/corridor_sensitivity_LOOCV_fix.rda")
 
 # save(COR, file = "data/jaguar/corridor_sensitivity_LOOCV.rda")
 load(file = "data/jaguar/corridor_sensitivity_LOOCV.rda")
