@@ -967,8 +967,8 @@ sapply(tracks_all$md_summer, FUN = dt.plot)  # all indivs have fairly even sampl
 # Model selection
 ## Autocorrelation model
 GUESS_smd <- lapply(tracks_all$md_summer, 
-                        function(x) {ctmm.guess(x, CTMM = ctmm(isotropic = TRUE),  # error = TRUE
-                                                interactive = FALSE)})  ## PROBABLY SHOULDN'T FIT ERROR MODEL ##
+                    function(x) {ctmm.guess(x, CTMM = ctmm(isotropic = TRUE),  # error = TRUE
+                                            interactive = FALSE)})  ## PROBABLY SHOULDN'T FIT ERROR MODEL ##
 
 FITS_smd <- list()  # empty list
 for (i in 1:length(tracks_all$md_summer)) {
@@ -985,6 +985,11 @@ AKDE_smd <- akde(tracks_all$md_summer, CTMM = FITS_smd)  # uniform-weight AKDE
 # save(AKDE_smd, file = "data/bassing_etal_2022_data/outputs/mule_deer/AKDE_md_summer_tel.rda")
 load(file = "data/bassing_etal_2022_data/outputs/mule_deer/AKDE_md_summer_tel.rda")
 
+# Lower resolution of AKDE
+AKDE_smd <- akde(tracks_all$md_summer, CTMM = FITS_smd, grid = list(dr = c(100,100)))  # uniform-weight AKDE
+save(AKDE_smd, file = "~/Downloads/data/bassing_etal_2022_data/outputs/mule_deer/AKDE_md_summer_tel_res100.rda")
+load(file = "~/Downloads/data/bassing_etal_2022_data/outputs/mule_deer/AKDE_md_summer_tel_res100.rda")
+
 # Plot indiv home ranges
 for (nam in names(tracks_all$md_summer)) {
   plot(tracks_all$md_summer[nam], UD = AKDE_smd[nam], main = nam)
@@ -994,9 +999,17 @@ COL <- color(tracks_all$md_summer, by = "individual")  # color by indiv
 
 # Combined plot of indiv home ranges  ## COULD NOT RUN: OUT OF MEMORY (64 GB) ##
 png(file = "figures/bassing_etal_2022/mule_deer/md_tracks_akde_summer_all.png", 
-    width = 4800, height = 3000, res = 600)
+    width = 3000, height = 4800, res = 600)
 plot(tracks_all$md_summer, UD = AKDE_smd, R = dem30,  # 95% AKDE w/ CIs
-     xlim = c(-150000,150000), ylim = c(-70000,70000),
+     xlim = c(-200000,0), ylim = c(-60000,120000),
+     col = COL, col.UD = COL, col.level = COL, col.grid = NA, col.R = "gray2", labels = NA,
+     main = "Mule Deer Summer Home Ranges")
+dev.off()
+
+png(file = "~/Downloads/figures/bassing_etal_2022/mule_deer/md_tracks_akde_summer_all.png", 
+    width = 4800, height = 4200, res = 600)
+plot(tracks_all$md_summer, UD = AKDE_smd, R = dem30,  # 95% AKDE w/ CIs
+     xlim = c(-200000,0), ylim = c(-60000,120000),
      col = COL, col.UD = COL, col.level = COL, col.grid = NA, col.R = "gray2", labels = NA,
      main = "Mule Deer Summer Home Ranges")
 dev.off()
@@ -1008,15 +1021,30 @@ PKDE_smd <- pkde(tracks_all$md_summer, UD = AKDE_smd,
 # save(PKDE_smd, file = "data/bassing_etal_2022_data/outputs/mule_deer/PKDE_md_summer_tel2.rda")
 load(file = "data/bassing_etal_2022_data/outputs/mule_deer/PKDE_md_summer_tel2.rda")
 
-# HERE ----
+# Lower resolution
+PKDE_smd <- pkde(tracks_all$md_summer, UD = AKDE_smd, 
+                 # weights = TRUE, 
+                 grid = list(dr = c(200,200)))  # unweighted pkde (should fix weights = vector of weights)
+save(PKDE_smd, file = "~/Downloads/data/bassing_etal_2022_data/outputs/mule_deer/PKDE_md_summer_tel2_res200.rda")
+load(file = "~/Downloads/data/bassing_etal_2022_data/outputs/mule_deer/PKDE_md_summer_tel2_res200.rda")
 
 # Plot population range estimate
 png(file = "figures/bassing_etal_2022/mule_deer/md_tracks_pkde_summer.png", 
     width = 4800, height = 4200, res = 600)
 plot(tracks_all$md_summer, UD = PKDE_smd, col = COL, R = dem30, col.R = "gray2",
      main = "Mule Deer Summer Cross-Site Population Range")
-## Very large and uncertain, perhaps better to separate by study site
 dev.off()
+
+# Lower resolution population range estimate
+png(file = "~/Downloads/figures/bassing_etal_2022/mule_deer/md_tracks_pkde_summer.png",
+    width = 4800, height = 4200, res = 600)
+plot(tracks_all$md_summer, UD = PKDE_smd, col = COL, R = dem30, col.R = "gray2",
+     main = "Mule Deer Summer Cross-Site Population Range")
+dev.off()
+# Error in rasterImage(as.raster(zc), min(x), min(y), max(x), max(y), interpolate = FALSE) : 
+#   cannot allocate memory block of size 16777216 Tb  -->  PKDE file too large
+
+# HERE ----
 
 # Population integrated resource selection function (iRSF)
 
@@ -1032,8 +1060,8 @@ formula_y1 <- as.formula("~ DEM + road_density + slope + percforest2018 + percsh
 RSF_smd <- list()  # empty list
 for (nam in names(tracks_all$md_summer)) {
   RSF_smd[[nam]] <- rsf.fit(tracks_all$md_summer[[nam]], UD = AKDE_smd[[nam]], 
-                                R = R, formula = formula, 
-                                integrator = "Riemann")
+                            R = R, formula = formula, 
+                            integrator = "Riemann")
 }
 save(RSF_smd, file = "data/bassing_etal_2022_data/outputs/mule_deer/RSF_md_summer_tel.rda")
 load(file = "data/bassing_etal_2022_data/outputs/mule_deer/RSF_md_summer_tel.rda")
