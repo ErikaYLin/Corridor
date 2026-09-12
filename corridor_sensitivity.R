@@ -3,10 +3,9 @@
 ## TODO: 
 ### FIX ODS TO BE ACTUAL BROWNIAN BRIDGES (CHECK FIRST)
 ### PATH SEGMENTATION (see path_segmentation.R)
-### DEFINE AS REVISITATION DISTRIBUTION (compare to range distributions)
 ### TEST WITH OTHER DATA
-### -- AQUATIC: sea turtles (Gulf Stream), riverine species?
-### -- AVIAN: desmoiselle cranes (check for issues with projections)
+### -- AQUATIC: sea turtles (Gulf Stream), riverine species (e.g. otters)?
+### -- AVIAN: demoiselle cranes (check for issues with projections)
 
 # Load `ctmm` package
 library(ctmm)

@@ -1,5 +1,8 @@
 # Randomizing path removal for corridor traversal count sensitivity test
 
+# TODO:
+## Remove grid args to test corridor avg distribution
+
 # Load packages
 library(ctmm)
 
@@ -164,7 +167,7 @@ for (i in 1:length(DATA[-1])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     # Occurrence distribution
     OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- occurrence(data = DATA3, CTMM = corfits3,
@@ -205,7 +208,7 @@ for (i in 1:length(DATA[-1])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     # Corridor distribution
     COR_ALL[[2]][[paste(i,j+1,sep = ",")]] <- ctmm:::corridor(data = DATA3, CTMM = corfits3,
@@ -214,7 +217,7 @@ for (i in 1:length(DATA[-1])) {
   }
 }  # L2OCV corridor
 
-save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
+# save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 
 # mean.UD()/mean.ctmm() debug --> x (corridor output) is missing parts of CTMM, like COV.mu 
@@ -256,14 +259,14 @@ for (i in 1:length(DATA[-c(1,2)])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     for (m in j:length(DATA3)) {
       
       # Remove 3rd path each iteration
       DATA4 <- DATA3[-m]
       corfits4 <- corfits3[-m]
-      ## length(DATA2) == 4
+      ## length(DATA4) == 4
      
       # Occurrence distribution
       OCC_ALL[[3]][[paste(i,j+1,m+2,sep = ",")]] <- occurrence(data = DATA4, CTMM = corfits4,
@@ -305,14 +308,14 @@ for (i in 1:length(DATA[-c(1,2)])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     for (m in j:length(DATA3)) {
       
       # Remove 3rd path each iteration
       DATA4 <- DATA3[-m]
       corfits4 <- corfits3[-m]
-      ## length(DATA2) == 4
+      ## length(DATA4) == 4
       
       # Corridor distribution
       COR_ALL[[3]][[paste(i,j+1,m+2,sep = ",")]] <- ctmm:::corridor(data = DATA4, CTMM = corfits4,
@@ -364,21 +367,21 @@ for (i in 1:length(DATA[-c(1:3)])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     for (m in j:length(DATA3[-1])) {
       
       # Remove 3rd path each iteration
       DATA4 <- DATA3[-m]
       corfits4 <- corfits3[-m]
-      ## length(DATA2) == 4
+      ## length(DATA4) == 4
       
       for (n in m:length(DATA4)) {
        
         # Remove 4th path each iteration
         DATA5 <- DATA4[-n]
         corfits5 <- corfits4[-n]
-        ## length(DATA2) == 4
+        ## length(DATA5) == 4
         
         # Occurrence distribution
         OCC_ALL[[4]][[paste(i,j+1,m+2,n+3,sep = ",")]] <- occurrence(data = DATA5, CTMM = corfits5,
@@ -421,21 +424,21 @@ for (i in 1:length(DATA[-c(1:3)])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 5
+    ## length(DATA3) == 5
     
     for (m in j:length(DATA3[-1])) {
       
       # Remove 3rd path each iteration
       DATA4 <- DATA3[-m]
       corfits4 <- corfits3[-m]
-      ## length(DATA2) == 4
+      ## length(DATA4) == 4
       
       for (n in m:length(DATA4)) {
         
         # Remove 4th path each iteration
         DATA5 <- DATA4[-n]
         corfits5 <- corfits4[-n]
-        ## length(DATA2) == 4
+        ## length(DATA5) == 4
         
         # Corridor distribution
         COR_ALL[[4]][[paste(i,j+1,m+2,n+3,sep = ",")]] <- ctmm:::corridor(data = DATA5, CTMM = corfits5,
@@ -462,7 +465,7 @@ for (i in 1:length(COR_ALL[[4]])) {
 
 COR[[4]] <- mean(COR_ALL[[4]])  # average resulting distributions
 
-save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
+# save(COR, file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_fix.rda")
 
 ## SEE `corridor_debug.R` SCRIPT FOR MEAN UD CALCULATIONS
@@ -565,22 +568,23 @@ plot(COR[[5]], level = NA)
 choose(7,6)  # 7 combinations
 
 # Occurrence Distribution
-OCC_ALL[[6]] <- list()  # empty list for ODs
-for (i in 1:length(DATA)) {
-  
-  # Keep one path each iteration
-  DATA7 <- DATA[i]
-  corfits7 <- corfits[i]
-  ## length(DATA7) == 1
-
-  # Occurrence distribution
-  OCC_ALL[[6]][[i]] <- occurrence(data = DATA7, CTMM = corfits7, grid = list(dr = c(100,100), 
-                                                                             align.to.origin = TRUE))
-  # OCC_ALL[[6]][[i]] <- paste(names(DATA7))  # CHECK
-}  # L6OCV occurrence
+# OCC_ALL[[6]] <- list()  # empty list for ODs
+# for (i in 1:length(DATA)) {
+#   
+#   # Keep one path each iteration
+#   DATA7 <- DATA[i]
+#   corfits7 <- corfits[i]
+#   ## length(DATA7) == 1
+# 
+#   # Occurrence distribution
+#   OCC_ALL[[6]][[i]] <- occurrence(data = DATA7, CTMM = corfits7, grid = list(dr = c(100,100), 
+#                                                                              align.to.origin = TRUE))
+#   # OCC_ALL[[6]][[i]] <- paste(names(DATA7))  # CHECK
+# }  # L6OCV occurrence
 
 OCC_ALL[[6]] <- list()
-OCC_ALL[[6]] <- occurrence(data = DATA, CTMM = corfits, grid = list(dr = c(100,100)))
+OCC_ALL[[6]] <- occurrence(data = DATA, CTMM = corfits, 
+                           grid = list(dr = c(100,100), align.to.origin = TRUE))
 
 # save(OCC_ALL, file = "data/mule_deer/occurrence_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/occurrence_sensitivity_LOOCV_all.rda")
@@ -623,8 +627,8 @@ dev.off()
 ## CANNOT EVALUATE CORRIDOR WITH ONLY 1 TRAVERSAL
 # Corridor distribution based on all traversals
 COR_ALL[[6]] <- list()
-COR_ALL[[6]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
-                                                                         align.to.origin = TRUE))
+COR_ALL[[6]] <- ctmm:::corridor(data = DATA, CTMM = corfits, 
+                                grid = list(dr = c(100,100), align.to.origin = TRUE))
 
 # save(COR_ALL, file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/mule_deer/corridor_sensitivity_LOOCV_all.rda")
@@ -831,7 +835,7 @@ for (i in 1:length(DATA[-1])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 2
+    ## length(DATA3) == 2
     
     # Occurrence distribution
     OCC_ALL[[2]][[paste(i,j+1,sep = ",")]] <- occurrence(data = DATA3, CTMM = corfits3,
@@ -872,7 +876,7 @@ for (i in 1:length(DATA[-1])) {
     # Remove 2nd path each iteration
     DATA3 <- DATA2[-j]
     corfits3 <- corfits2[-j]
-    ## length(DATA2) == 2
+    ## length(DATA3) == 2
     
     # Corridor distribution
     COR_ALL[[2]][[paste(i,j+1,sep = ",")]] <- ctmm:::corridor(data = DATA3, CTMM = corfits3,
@@ -926,13 +930,11 @@ choose(4,3)  # 4 combinations
 # }  # L3OCV occurrence
 
 OCC_ALL[[3]] <- list()
-OCC_ALL[[3]] <- occurrence(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
-                                                                    align.to.origin = TRUE))
+OCC_ALL[[3]] <- occurrence(data = DATA, CTMM = corfits, 
+                           grid = list(dr = c(100,100), align.to.origin = TRUE))
 
 # save(OCC_ALL, file = "data/jaguar/occurrence_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/occurrence_sensitivity_LOOCV_all.rda")
-
-# OCC[[3]] <- c(OCC_ALL[[3]][[1]], OCC_ALL[[3]][[2]], OCC_ALL[[3]][[3]], OCC_ALL[[3]][[4]])
 
 OCC[[3]] <- mean(OCC_ALL[[3]])  # average resulting distributions
 
@@ -969,8 +971,8 @@ dev.off()
 ## CANNOT EVALUATE CORRIDOR WITH ONLY 1 TRAVERSAL
 # Corridor distribution based on all traversals
 COR_ALL[[3]] <- list()
-COR_ALL[[3]] <- ctmm:::corridor(data = DATA, CTMM = corfits, grid = list(dr = c(100,100), 
-                                                                         align.to.origin = TRUE))
+COR_ALL[[3]] <- ctmm:::corridor(data = DATA, CTMM = corfits, 
+                                grid = list(dr = c(100,100), align.to.origin = TRUE))
 
 # save(COR_ALL, file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
 load(file = "data/jaguar/corridor_sensitivity_LOOCV_all.rda")
