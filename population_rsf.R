@@ -1070,13 +1070,13 @@ load(file = "data/bassing_etal_2022_data/outputs/mule_deer/RSF_md_summer_tel.rda
 
 
 # Population iRSF
-RSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula)
+pRSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula)
 ## ISSUE 1 - reference variable should not be needed (see "pop_rsf_debug.R")
 #           (no factors in raster data, % landcover does not appear to have issues with collinearity)
 # Error in if (reference == "auto") { : argument is of length zero
 
 # Population iRSF w/ Year 1 landcover only
-RSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula_y1)
+pRSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula_y1)
 # Error: crs not found: is it missing?
 ## GEO <- c('longitude','latitude')
 ## xy <- ctmm:::get.telemetry(tracks_all$md_summer,GEO)  <-- comes out to empty numeric
@@ -1084,13 +1084,18 @@ RSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula
 projection(R$DEM) <- projection(tracks_all$md_summer[[1]])
 projection(R$slope) <- projection(tracks_all$md_summer[[1]])
 
-RSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula_y1)
-# test <- ctmm:::project(xy, to = raster::projection(R[[1]]))  # this works though?
+pRSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula_y1)
+# test <- ctmm:::project(xy, to = raster::projection(R[[1]]))  # this works though? <- ??
 
 # TEST with no formula
-RSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R[-c(5,7,9)])
+pRSF_smd <- rsf.fit(tracks_all$md_summer, UD = PKDE_smd, R = R[-c(5,7,9)])
 # Error: crs not found: is it missing?
 ## Must be same issue as above, see ctmm:::get.telemetry()
+
+# Population iRSF select
+pRSF_smd <- rsf.select(tracks_all$md_summer, UD = PKDE_smd, R = R, formula = formula)
+# Error in data[, axes, drop = FALSE] : incorrect number of dimensions
+
 
 
 ###

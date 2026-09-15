@@ -27,8 +27,8 @@ grass19 <- raster::raster("data/bassing_etal_2022_data/spatial data/perc_grass_2
 # NOTE: Authors obtained road density and landcover habitat covariates from Cascadia Biodiversity Watch TerrAdapt: Cascadia tool (30m res)
 ## Road density calculated as total road length per 1 km (incl. highways, residential roads, service roads)
 ## Categorical landcover (19 classes) reclassified into 6 landcover classes (forest, xeric shrub, xeric grass, mesic grass, developed, water)
-## Used a moving window analysis to calculate the % of each landcover class w/in 250 m radius of each observation (CT observation?)
-## (incl. % mixed forest, % xeric grass, % xeric shrub in their analyses because they made up the bulk of the classes in the study areas
+## Used a moving window analysis to calculate the % of each landcover class w/in 250 m radius of each observation --> CHECK FOCAL
+## (incl. % mixed forest, % xeric grass, % xeric shrub in their analyses because they made up the bulk of the classes in the study areas)
 ## Standardized all habitat covariate data (centered on 0, SD = 1)
 
 
@@ -841,7 +841,7 @@ summary(md_sdm_s)
 # 0         0         0         0 
 # 
 # $CI
-# low           est       high
+#                                               low           est       high
 # Year2:percgrass2019 (1/Year2:percgrass2019)   -0.01171772  0.0321335207 0.07598476
 # Year1:percgrass2018 (1/Year1:percgrass2018)   -0.04712778  0.0033481549 0.05382409
 # Year2:percshrub2019 (1/Year2:percshrub2019)    0.10363893  0.1747821788 0.24592542
@@ -851,6 +851,8 @@ summary(md_sdm_s)
 # slope (1/slope)                               -0.04228691  0.0006103077 0.04350752
 # road_density (1/road_density)                 -0.21468955 -0.0790561618 0.05657723
 # DEM (1/DEM)                                   -0.04823399  0.0186022020 0.08543839
+
+## variance-weighted mean for coef estimates
 
 
 # Add telemetry iRSF results for individuals
